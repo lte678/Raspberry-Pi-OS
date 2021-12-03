@@ -1,0 +1,5 @@
+ Processor:
+ BCM2837 1.2 GHz 64-bit quad-core ARM Cortex-A53
+ 
+ Architecture:
+ ARMv8-A (AArch64) -> A64 instruction set

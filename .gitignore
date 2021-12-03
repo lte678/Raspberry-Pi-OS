@@ -1,0 +1,7 @@
+examples/
+documentation/
+crosscompiler/
+build/
+kernel.img
+kernel.map
+kernel.list
