@@ -35,6 +35,8 @@ CFLAGS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding
 # assembly code files in source.
 AS_SOURCES := $(wildcard $(SOURCE)*.s)
 C_SOURCES := $(wildcard $(SOURCE)*.c)
+AS_SOURCES += $(wildcard $(SOURCE)fs/*.s)
+C_SOURCES += $(wildcard $(SOURCE)fs/*.c)
 AS_OBJECTS := $(patsubst $(SOURCE)%.s, $(BUILD)%.o, $(AS_SOURCES))
 C_OBJECTS := $(patsubst $(SOURCE)%.c, $(BUILD)%.o, $(C_SOURCES))
 
@@ -62,14 +64,17 @@ $(BUILD)output.elf : $(OBJECTS) $(LINKER)
 # MAKE OBJECT FILES
 # c files
 # -c option leaves linking for later
-$(C_OBJECTS): $(C_SOURCES) $(BUILD)
-	$(ARMGNU)-gcc $(CFLAGS) -I $(SOURCE) -c $(patsubst $(BUILD)%.o, $(SOURCE)%.c, $@) -o $@
+$(C_OBJECTS): $(C_SOURCES) $(BUILD) $(BUILD)fs
+	$(ARMGNU)-gcc $(CFLAGS) -I $(SOURCE) -I include/ -c $(patsubst $(BUILD)%.o, $(SOURCE)%.c, $@) -o $@
 
 # s files
 $(AS_OBJECTS): $(AS_SOURCES) $(BUILD)
 	$(ARMGNU)-as $< -o $@
 
 $(BUILD):
+	mkdir $@
+
+$(BUILD)fs:
 	mkdir $@
 
 make-debug:
