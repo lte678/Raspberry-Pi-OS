@@ -37,6 +37,8 @@ AS_SOURCES := $(wildcard $(SOURCE)*.s)
 C_SOURCES := $(wildcard $(SOURCE)*.c)
 AS_SOURCES += $(wildcard $(SOURCE)fs/*.s)
 C_SOURCES += $(wildcard $(SOURCE)fs/*.c)
+AS_SOURCES += $(wildcard $(SOURCE)disk/*.s)
+C_SOURCES += $(wildcard $(SOURCE)disk/*.c)
 AS_OBJECTS := $(patsubst $(SOURCE)%.s, $(BUILD)%.o, $(AS_SOURCES))
 C_OBJECTS := $(patsubst $(SOURCE)%.c, $(BUILD)%.o, $(C_SOURCES))
 
@@ -64,7 +66,7 @@ $(BUILD)output.elf : $(OBJECTS) $(LINKER)
 # MAKE OBJECT FILES
 # c files
 # -c option leaves linking for later
-$(C_OBJECTS): $(C_SOURCES) $(BUILD) $(BUILD)fs
+$(C_OBJECTS): $(C_SOURCES) $(BUILD) $(BUILD)fs $(BUILD)disk
 	$(ARMGNU)-gcc $(CFLAGS) -I $(SOURCE) -I include/ -c $(patsubst $(BUILD)%.o, $(SOURCE)%.c, $@) -o $@
 
 # s files
@@ -75,6 +77,9 @@ $(BUILD):
 	mkdir $@
 
 $(BUILD)fs:
+	mkdir $@
+
+$(BUILD)disk:
 	mkdir $@
 
 make-debug:

@@ -1,6 +1,8 @@
 #ifndef _UART
 #define _UART
 
+#include <kernel/register.h>
+
 void uart_init(void);
 
 void uart_send(unsigned int c);

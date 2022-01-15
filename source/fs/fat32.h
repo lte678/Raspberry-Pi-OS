@@ -33,5 +33,6 @@ struct bios_parameter_block {
 };
 
 int read_fat32_bpb(struct bios_parameter_block *bpb);
+void print_bpb(struct bios_parameter_block *bpb);
 
 #endif  // FAT32_H

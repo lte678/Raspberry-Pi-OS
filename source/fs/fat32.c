@@ -16,37 +16,28 @@ int fat32_check_valid(struct bios_parameter_block *bpb) {
 }
 
 void print_bpb(struct bios_parameter_block *bpb) {
-    char buf[16];
-    
     uart_print("BIOS Parameter Block\n");
 
     uart_print("\n  Bytes per Sector:      ");
-    itos(bpb->bytes_per_sector, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->bytes_per_sector);
 
     uart_print("\n  Sectors per Cluster:   ");
-    itos(bpb->sectors_per_cluster, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->sectors_per_cluster);
 
     uart_print("\n  Reserved Sectors:      ");
-    itos(bpb->nr_reserved_sectors, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->nr_reserved_sectors);
 
     uart_print("\n  Number of FATs:        ");
-    itos(bpb->nr_file_allocation_tables, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->nr_file_allocation_tables);
 
     uart_print("\n  Nr. Root Dir Entrys:   ");
-    itos(bpb->nr_root_dir_entry, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->nr_root_dir_entry);
 
     uart_print("\n  Number of Sectors:     ");
-    itos(bpb->nr_sectors, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->nr_sectors);
 
     uart_print("\n  Root Cluster:          ");
-    itos(bpb->root_cluster, buf, sizeof(buf));
-    uart_print(buf);
+    print_int(bpb->root_cluster);
 
     uart_print("\n");
 }
