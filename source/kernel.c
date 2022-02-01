@@ -8,7 +8,7 @@
 void kernel_entry_point(void) {
     //struct bios_parameter_block bpb;
     char ver_str[8];
-
+    
     uart_init();
     uart_print("Booting LXE...\n");
     uart_print("Developed by Leon Teichroeb :)\n");

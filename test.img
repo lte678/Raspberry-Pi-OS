@@ -1,0 +1,119 @@
+
+build/output.elf:     file format elf64-littleaarch64
+
+
+Disassembly of section .init:
+
+0000000000008000 <_start>:
+    8000:	d53800a0 	mrs	x0, mpidr_el1
+    8004:	d2b82001 	mov	x1, #0xc1000000            	// #3238002688
+    8008:	8a210000 	bic	x0, x0, x1
+    800c:	b4000040 	cbz	x0, 8014 <master>
+    8010:	14000005 	b	8024 <hang>
+
+0000000000008014 <master>:
+    8014:	b27103ff 	mov	sp, #0x8000                	// #32768
+    8018:	94000001 	bl	801c <skip>
+
+000000000000801c <skip>:
+    801c:	aa1e03e0 	mov	x0, x30
+    8020:	94000036 	bl	80f8 <kernel_entry_point>
+
+0000000000008024 <hang>:
+    8024:	14000000 	b	8024 <hang>
+
+0000000000008028 <PUT32>:
+    8028:	b9000001 	str	w1, [x0]
+    802c:	d65f03c0 	ret
+
+0000000000008030 <GET32>:
+    8030:	b9400000 	ldr	w0, [x0]
+    8034:	d65f03c0 	ret
+
+0000000000008038 <dummy>:
+    8038:	d65f03c0 	ret
+
+Disassembly of section .text:
+
+0000000000008040 <memset>:
+    8040:	12001c00 	and	w0, w0, #0xff
+    8044:	34000102 	cbz	w2, 8064 <memset+0x24>
+    8048:	51000443 	sub	w3, w2, #0x1
+    804c:	91000422 	add	x2, x1, #0x1
+    8050:	8b030042 	add	x2, x2, x3
+    8054:	d503201f 	nop
+    8058:	38001420 	strb	w0, [x1], #1
+    805c:	eb02003f 	cmp	x1, x2
+    8060:	54ffffc1 	b.ne	8058 <memset+0x18>  // b.any
+    8064:	d65f03c0 	ret
+
+0000000000008068 <version_str>:
+    8068:	a9bd7bfd 	stp	x29, x30, [sp, #-48]!
+    806c:	2a0103e2 	mov	w2, w1
+    8070:	910003fd 	mov	x29, sp
+    8074:	a90153f3 	stp	x19, x20, [sp, #16]
+    8078:	aa0003f4 	mov	x20, x0
+    807c:	2a0103f3 	mov	w19, w1
+    8080:	aa0003e1 	mov	x1, x0
+    8084:	52800000 	mov	w0, #0x0                   	// #0
+    8088:	9400008e 	bl	82c0 <itos>
+    808c:	37f80060 	tbnz	w0, #31, 8098 <version_str+0x30>
+    8090:	6b13001f 	cmp	w0, w19
+    8094:	540000a3 	b.cc	80a8 <version_str+0x40>  // b.lo, b.ul, b.last
+    8098:	52800020 	mov	w0, #0x1                   	// #1
+    809c:	a94153f3 	ldp	x19, x20, [sp, #16]
+    80a0:	a8c37bfd 	ldp	x29, x30, [sp], #48
+    80a4:	d65f03c0 	ret
+    80a8:	f90013f5 	str	x21, [sp, #32]
+    80ac:	528005c1 	mov	w1, #0x2e                  	// #46
+    80b0:	11000415 	add	w21, w0, #0x1
+    80b4:	3820ca81 	strb	w1, [x20, w0, sxtw]
+    80b8:	4b150262 	sub	w2, w19, w21
+    80bc:	52800040 	mov	w0, #0x2                   	// #2
+    80c0:	8b35c281 	add	x1, x20, w21, sxtw
+    80c4:	9400007f 	bl	82c0 <itos>
+    80c8:	37f80140 	tbnz	w0, #31, 80f0 <version_str+0x88>
+    80cc:	0b0002b5 	add	w21, w21, w0
+    80d0:	6b1302bf 	cmp	w21, w19
+    80d4:	540000e2 	b.cs	80f0 <version_str+0x88>  // b.hs, b.nlast
+    80d8:	3835ca9f 	strb	wzr, [x20, w21, sxtw]
+    80dc:	52800000 	mov	w0, #0x0                   	// #0
+    80e0:	a94153f3 	ldp	x19, x20, [sp, #16]
+    80e4:	f94013f5 	ldr	x21, [sp, #32]
+    80e8:	a8c37bfd 	ldp	x29, x30, [sp], #48
+    80ec:	d65f03c0 	ret
+    80f0:	f94013f5 	ldr	x21, [sp, #32]
+    80f4:	17ffffe9 	b	8098 <version_str+0x30>
+
+00000000000080f8 <kernel_entry_point>:
+    80f8:	a9be7bfd 	stp	x29, x30, [sp, #-32]!
+    80fc:	910003fd 	mov	x29, sp
+    8100:	9400015a 	bl	8668 <uart_init>
+    8104:	90000000 	adrp	x0, 8000 <_start>
+    8108:	91290000 	add	x0, x0, #0xa40
+    810c:	940001a5 	bl	87a0 <uart_print>
+    8110:	90000000 	adrp	x0, 8000 <_start>
+    8114:	91294000 	add	x0, x0, #0xa50
+    8118:	940001a2 	bl	87a0 <uart_print>
+    811c:	910063e0 	add	x0, sp, #0x18
+    8120:	52800101 	mov	w1, #0x8                   	// #8
+    8124:	97ffffd1 	bl	8068 <version_str>
+    8128:	34000080 	cbz	w0, 8138 <kernel_entry_point+0x40>
+    812c:	940001ef 	bl	88e8 <sd_initialize>
+    8130:	a8c27bfd 	ldp	x29, x30, [sp], #32
+    8134:	d65f03c0 	ret
+    8138:	90000000 	adrp	x0, 8000 <_start>
+    813c:	9129c000 	add	x0, x0, #0xa70
+    8140:	94000198 	bl	87a0 <uart_print>
+    8144:	910063e0 	add	x0, sp, #0x18
+    8148:	94000196 	bl	87a0 <uart_print>
+    814c:	90000000 	adrp	x0, 8000 <_start>
+    8150:	912f6000 	add	x0, x0, #0xbd8
+    8154:	94000193 	bl	87a0 <uart_print>
+    8158:	940001e4 	bl	88e8 <sd_initialize>
+    815c:	a8c27bfd 	ldp	x29, x30, [sp], #32
+    8160:	d65f03c0 	ret
+    8164:	00000000 	.inst	0x00000000 ; undefined
+
+0000000000008168 <print_int>:
+    

@@ -87,7 +87,7 @@ make-debug:
 	@echo $(C_OBJECTS)
 
 run:
-	qemu-system-aarch64 -M raspi3b -serial null -serial stdio -kernel kernel.img
+	qemu-system-aarch64 -M raspi3b -serial null -serial stdio -kernel kernel.img -drive file=test.img,if=sd,format=raw
 
 # Rule to clean files.
 clean : 

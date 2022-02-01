@@ -1,1 +1,1 @@
-int sd_initialize(void);
+int sd_initialize();
