@@ -52,13 +52,13 @@ unsigned int uart_check ( void )
     return(0);
 }
 //------------------------------------------------------------------------
-void uart_send ( unsigned int c )
+void uart_send (unsigned char c)
 {
     while(1)
     {
         if(get32(AUX_MU_LSR_REG)&0x20) break;
     }
-    put32(AUX_MU_IO_REG,c);
+    put32(AUX_MU_IO_REG, (unsigned int)c);
 }
 //------------------------------------------------------------------------
 void uart_flush ( void )

@@ -29,7 +29,8 @@ MAP = kernel.map
 LINKER = kernel.ld
 
 # Dont use glib
-CFLAGS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding 
+OPTIONS = -DDEBUG_SD
+CFLAGS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.

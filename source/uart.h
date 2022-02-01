@@ -5,7 +5,7 @@
 
 void uart_init(void);
 
-void uart_send(unsigned int c);
+void uart_send(unsigned char c);
 unsigned int uart_recv(void);
 void uart_flush(void);
 
