@@ -11,14 +11,14 @@ void kernel_entry_point(void) {
     char ver_str[8];
     
     uart_init();
-    uart_print("Booting LXE...\n");
-    uart_print("Developed by Leon Teichroeb :)\n");
+    uart_print("Booting LXE...\r\n");
+    uart_print("Developed by Leon Teichroeb :)\r\n");
 
     // Print version
     if(version_str(ver_str, sizeof(ver_str)) == 0) {
         uart_print("Version: v");
         uart_print(ver_str);
-        uart_print("\n");
+        uart_print("\r\n");
     }
 
     // FAT32 shit
@@ -27,7 +27,7 @@ void kernel_entry_point(void) {
     //   bpb.bytes_per_sector = 512;
     //   print_bpb(&bpb);
     //
-    //    uart_print("FAT32 read BPB failed!\n");
+    //    uart_print("FAT32 read BPB failed!\r\n");
     //}
 
     // sd_initialize();

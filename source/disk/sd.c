@@ -103,51 +103,51 @@ static void sd_print_err() {
     unsigned int err = get32(SDEMMC_INTERRUPT);
     uart_print("  INTERRUPT: 0x");
     print_hex_uint32(err);
-    uart_print("\n");
+    uart_print("\r\n");
     // Bit details:
     uart_print("  ACMD_ERR   ");
     print_int((err & SD_INTERRUPT_ACMD_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  DEND_ERR   ");
     print_int((err & SD_INTERRUPT_DEND_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  DCRC_ERR   ");
     print_int((err & SD_INTERRUPT_DCRC_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  DTO_ERR    ");
     print_int((err & SD_INTERRUPT_DTO_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  CBAD_ERR   ");
     print_int((err & SD_INTERRUPT_CBAD_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  CEND_ERR   ");
     print_int((err & SD_INTERRUPT_CEND_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  CCRC_ERR   ");
     print_int((err & SD_INTERRUPT_CCRC_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  CTO_ERR    ");
     print_int((err & SD_INTERRUPT_CTO_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  ERR        ");
     print_int((err & SD_INTERRUPT_ERR) != 0);
-    uart_print("\n");
+    uart_print("\r\n");
 }
 
 static void sd_print_status(struct sd_status *s) {
-    uart_print("SD Card Status:\n");
+    uart_print("SD Card Status:\r\n");
     uart_print("  CSD_OVERWRITE ");
     print_int(s->csd_overwrite_err);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  WP_ERASE_SKIP ");
     print_int(s->wp_erase_skip);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  CARD_ECC_RST  ");
     print_int(s->card_ecc_disabled);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  ERASE_RESET   ");
     print_int(s->erase_reset);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  CURRENT_STATE ");
     switch(s->current_state) {
     case 0:
@@ -181,13 +181,13 @@ static void sd_print_status(struct sd_status *s) {
         uart_print("unknown");
     }
     //print_int(s->current_state);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  RDY_FOR_DATA  ");
     print_int(s->ready_for_data);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("  APP_CMD       ");
     print_int(s->app_cmd);
-    uart_print("\n");
+    uart_print("\r\n");
 }
 
 static struct sd_status sd_unpack_status(unsigned int reg) {
@@ -231,7 +231,7 @@ static int sd_exec_cmd(struct sd_cmd cmd, unsigned int arg, unsigned int *ret) {
         #ifdef DEBUG_SD
         uart_print("SD Timeout during CMD");
         print_int(cmd.cmd_idx);
-        uart_print("\n");
+        uart_print("\r\n");
         #endif /* DEBUG_SD */
         return -2;
     } else if(interrupt & SD_INTERRUPT_ERR) {
@@ -267,7 +267,7 @@ static int sd_exec_cmd(struct sd_cmd cmd, unsigned int arg, unsigned int *ret) {
         uart_print(" ");
         print_hex_uint32(ret[3]);
     }
-    uart_print("\n");
+    uart_print("\r\n");
     #endif /* DEBUG_SD */
     return 0;
 }
@@ -282,7 +282,7 @@ static int sd_exec_cmd0() {
     cmd.crc_check_en = 1;
     cmd.response_type = 0x00;
     if(sd_exec_cmd(cmd, 0, &resp)) {
-        uart_print("SD card error during CMD0\n");
+        uart_print("SD card error during CMD0\r\n");
         return -1;
     }
     return 0;
@@ -298,7 +298,7 @@ static int sd_exec_cmd2(unsigned int *resp) {
     cmd.crc_check_en = 1;
     cmd.response_type = 0x01; // 136 bits
     if(sd_exec_cmd(cmd, 0, resp)) {
-        uart_print("SD card error during CMD2\n");
+        uart_print("SD card error during CMD2\r\n");
         return -1;
     }
     return 0;
@@ -313,7 +313,7 @@ static int sd_exec_cmd3(unsigned int *resp, unsigned int *status) {
     cmd.crc_check_en = 1;
     cmd.response_type = 0x02;
     if(sd_exec_cmd(cmd, 0, resp)) {
-        uart_print("SD card error during CMD3\n");
+        uart_print("SD card error during CMD3\r\n");
         return -1;
     }
     // Contains status bits 23, 22, 19, 12:0 in lower 2 octets
@@ -336,7 +336,7 @@ static int sd_exec_cmd7(unsigned int rca, unsigned int *status) {
     cmd.crc_check_en = 1;
     cmd.response_type = 0x02;
     if(sd_exec_cmd(cmd, rca << 16, status)) {
-        uart_print("SD card error during CMD7\n");
+        uart_print("SD card error during CMD7\r\n");
         *status = 0;
         return -1;
     }
@@ -354,13 +354,13 @@ static int sd_exec_cmd8() {
     cmd.response_type = 0x02;
     if(sd_exec_cmd(cmd, 0x000001AA, &resp)) {
         #ifdef DEBUG_SD
-        uart_print("SD card error during CMD8\n");
+        uart_print("SD card error during CMD8\r\n");
         #endif /* DEBUG_SD */
         return -1;
     }
     if(resp != 0x000001AA) {
         #ifdef DEBUG_SD
-        uart_print("SD card unexpected response during CMD8!\n");
+        uart_print("SD card unexpected response during CMD8!\r\n");
         #endif /* DEBUG_SD */
         return -1;
     }
@@ -377,7 +377,7 @@ static int sd_exec_cmd13(unsigned int rca, struct sd_status *status) {
     cmd.crc_check_en = 1;
     cmd.response_type = 0x02;
     if(sd_exec_cmd(cmd, rca << 16, &resp)) {
-        uart_print("SD card error during CMD13\n");
+        uart_print("SD card error during CMD13\r\n");
         *status = (struct sd_status){0};
         return -1;
     }
@@ -396,7 +396,7 @@ static int sd_exec_cmd55() {
     cmd.response_type = 0x02;
     if(sd_exec_cmd(cmd, 0, &resp)) {
         #ifdef DEBUG_SD
-        uart_print("SD card error during CMD55\n");
+        uart_print("SD card error during CMD55\r\n");
         #endif /* DEBUG_SD */
         return -1;
     }
@@ -420,7 +420,7 @@ static int sd_exec_acmd41(unsigned int *resp) {
     
     if(sd_exec_cmd(cmd, 0x51ff8000, resp)) {
         #ifdef DEBUG_SD
-        uart_print("SD card error during CMD41\n");
+        uart_print("SD card error during CMD41\r\n");
         #endif /* DEBUG_SD */
         return -1;
     }
@@ -444,7 +444,7 @@ static int sd_exec_cmd17() {
     
     if((ret = sd_exec_cmd(cmd, 0x00, &resp))) {
         #ifdef DEBUG_SD
-        uart_print("SD card error during CMD17\n");
+        uart_print("SD card error during CMD17\r\n");
         #endif /* DEBUG_SD */
         return ret;
     }
@@ -464,7 +464,7 @@ static struct sd_cid sd_get_cid() {
     cid = (struct sd_cid){0};
 
     if(sd_exec_cmd2((unsigned int*)&cid)) {
-        uart_print("SD error returning CID\n");
+        uart_print("SD error returning CID\r\n");
     }
     return cid;
 }
@@ -472,22 +472,22 @@ static struct sd_cid sd_get_cid() {
 static void print_cid(struct sd_cid *cid) {
     uart_print("Manufacturer: ");
     print_uint(cid->manufacturer);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("Application:  ");
     print_uint(cid->application);
-    uart_print("\n");
+    uart_print("\r\n");
     // TODO: memcpy
     uart_print("Product Name: ");
     for(int i = 0; i < 5; i++) {
         uart_send(cid->product_name[i]);
     }
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("Revision:     ");
     print_uint(cid->product_rev);
-    uart_print("\n");
+    uart_print("\r\n");
     uart_print("Serial Number:");
     print_uint(cid->product_serial);
-    uart_print("\n");
+    uart_print("\r\n");
 }
 
 static int sd_reset() {
@@ -577,10 +577,10 @@ static int sd_reset() {
 
 int sd_initialize() {
     if(sd_reset() != 0) {
-        uart_print("SD card initialization failed!\n");
+        uart_print("SD card initialization failed!\r\n");
         return -1;
     }
-    uart_print("Initalized SD card!\n");
+    uart_print("Initalized SD card!\r\n");
 
     // struct sd_cid cid = sd_get_cid();
     // print_cid(&cid);
@@ -588,7 +588,7 @@ int sd_initialize() {
     unsigned char buff[512];
     unsigned int *buff2 = (unsigned int*)buff;
     if(sd_exec_cmd17()) {
-        uart_print("Read failed!\n");
+        uart_print("Read failed!\r\n");
     }
     int i = 0;
     while(get32(SDEMMC_INTERRUPT) & SD_INTERRUPT_DATA_READY && i < 128) {
@@ -597,7 +597,7 @@ int sd_initialize() {
     }
     uart_print("SD: Read ");
     print_int(i*4);
-    uart_print(" bytes\n");
+    uart_print(" bytes\r\n");
 
     // print_hex(buff, 512);
 
@@ -609,12 +609,12 @@ int sd_initialize() {
 //}
 
 static int monoterm_sd_help() {
-    uart_print("Usage: 'sd [help|status]'\n");
+    uart_print("Usage: 'sd [help|status]'\r\n");
     return 0;
 }
 
 static int monoterm_sd_status() {
-    uart_print("Printing sd status\n");
+    uart_print("Printing sd status\r\n");
     return 0;
 }
 

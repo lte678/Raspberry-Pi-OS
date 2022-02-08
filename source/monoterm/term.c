@@ -51,7 +51,7 @@ int process_input(char *s) {
         }
         cmd++;
     }
-    uart_print("Command not found!\n");
+    uart_print("Command not found!\r\n");
     return -1;
 }
 
@@ -66,18 +66,20 @@ void monoterm_start() {
         // Only execute \r\n and \n\r once
         if((c == '\r' && prev != '\n') || (c == '\n' && prev != '\r')) {
             input[input_i] = '\0';
-            uart_send('\n'); 
+            uart_print("\r\n"); 
             // Process user input buffer
             if(process_input(input)) {
-                uart_print("Command terminated with error.\n");
+                uart_print("Command terminated with error.\r\n");
             }
             // Display new prompt
             uart_print(">");
             input_i = 0;
-        } else if(c == '\b') {
+        } else if(c == '\x7F' || c == '\x08') {
             // Handle backspace
-            uart_print("\b\x1B[0K");
-            input_i--;
+            if(input_i) {
+                uart_print("\x08\x1B[K");
+                input_i--;
+            }
         } else {
             input[input_i] = c;
             // Echo user input

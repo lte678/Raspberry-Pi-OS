@@ -89,7 +89,9 @@ asm:
 	$(ARMGNU)-objdump -S $(BUILD)output.elf > $(BUILD)kernel.asm
 
 run:
-	qemu-system-aarch64 -M raspi3b -serial null -serial stdio -kernel kernel.img -drive file=test.img,if=sd,format=raw
+	qemu-system-aarch64 -M raspi3b \
+		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
+		-kernel kernel.img -drive file=test.img,if=sd,format=raw
 
 # Rule to clean files.
 clean : 
