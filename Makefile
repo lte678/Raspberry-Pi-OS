@@ -30,21 +30,24 @@ LINKER = kernel.ld
 
 # Dont use glib
 OPTIONS = -DDEBUG_SD
-CFLAGS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
+CFLAGS = -Wall -O2 -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
+
+# Subfolders containing source files
+FOLDERS := fs disk monoterm
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.
 AS_SOURCES := $(wildcard $(SOURCE)*.s)
 C_SOURCES := $(wildcard $(SOURCE)*.c)
-AS_SOURCES += $(wildcard $(SOURCE)fs/*.s)
-C_SOURCES += $(wildcard $(SOURCE)fs/*.c)
-AS_SOURCES += $(wildcard $(SOURCE)disk/*.s)
-C_SOURCES += $(wildcard $(SOURCE)disk/*.c)
+AS_SOURCES += $(foreach F, $(FOLDERS), $(wildcard $(SOURCE)$(F)/*.s))
+C_SOURCES += $(foreach F, $(FOLDERS), $(wildcard $(SOURCE)$(F)/*.c))
 AS_OBJECTS := $(patsubst $(SOURCE)%.s, $(BUILD)%.o, $(AS_SOURCES))
 C_OBJECTS := $(patsubst $(SOURCE)%.c, $(BUILD)%.o, $(C_SOURCES))
 
 OBJECTS += $(C_OBJECTS)
 OBJECTS += $(AS_OBJECTS)
+
+BUILD_FOLDERS := $(BUILD) $(addprefix $(BUILD),$(FOLDERS))
 
 # Rule to make everything.
 all: $(TARGET) $(LIST)
@@ -67,25 +70,23 @@ $(BUILD)output.elf : $(OBJECTS) $(LINKER)
 # MAKE OBJECT FILES
 # c files
 # -c option leaves linking for later
-$(C_OBJECTS): $(C_SOURCES) $(BUILD) $(BUILD)fs $(BUILD)disk
+$(C_OBJECTS): $(C_SOURCES) $(BUILD_FOLDERS)
 	$(ARMGNU)-gcc $(CFLAGS) -I $(SOURCE) -I include/ -c $(patsubst $(BUILD)%.o, $(SOURCE)%.c, $@) -o $@
 
 # s files
 $(AS_OBJECTS): $(AS_SOURCES) $(BUILD)
 	$(ARMGNU)-as $< -o $@
 
-$(BUILD):
-	mkdir $@
-
-$(BUILD)fs:
-	mkdir $@
-
-$(BUILD)disk:
+# Create rule for making build folders
+$(BUILD_FOLDERS):
 	mkdir $@
 
 make-debug:
 	@echo $(OBJECTS)
 	@echo $(C_OBJECTS)
+
+asm:
+	$(ARMGNU)-objdump -S $(BUILD)output.elf > $(BUILD)kernel.asm
 
 run:
 	qemu-system-aarch64 -M raspi3b -serial null -serial stdio -kernel kernel.img -drive file=test.img,if=sd,format=raw

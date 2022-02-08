@@ -13,7 +13,8 @@
 
 
 static int gpio_valid(unsigned char gpio) {
-    if(gpio > 53) return -1;
+    if(gpio > 53) return 0;
+    return 1;
 }
 
 int gpio_set_mode(unsigned char gpio, unsigned char mode) {

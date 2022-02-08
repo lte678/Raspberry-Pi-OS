@@ -37,13 +37,13 @@ unsigned int uart_lcr ( void )
     return(get32(AUX_MU_LSR_REG));
 }
 //------------------------------------------------------------------------
-unsigned int uart_recv ( void )
+unsigned char uart_recv ( void )
 {
     while(1)
     {
         if(get32(AUX_MU_LSR_REG)&0x01) break;
     }
-    return(get32(AUX_MU_IO_REG)&0xFF);
+    return get32(AUX_MU_IO_REG) & 0xFF;
 }
 //------------------------------------------------------------------------
 unsigned int uart_check ( void )

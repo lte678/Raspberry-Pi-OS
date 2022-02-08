@@ -77,3 +77,17 @@ int utos(unsigned int num, char *buffer, unsigned int n) {
 
     return -1;
 }
+
+int strcmp(char *s1, char *s2) {
+    while(*s1 && *s2) {
+        if(*s1 != *s2) {
+            return -1;
+        }
+        s1++;
+        s2++;
+    }
+    if(*s1 || *s2) {
+        return -1;
+    }
+    return 0;
+}

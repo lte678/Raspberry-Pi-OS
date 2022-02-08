@@ -599,7 +599,7 @@ int sd_initialize() {
     print_int(i*4);
     uart_print(" bytes\n");
 
-    print_hex(buff, 512);
+    // print_hex(buff, 512);
 
     return 0;
 }
@@ -607,3 +607,27 @@ int sd_initialize() {
 //static unsigned char sd_read_byte() {
 //  
 //}
+
+static int monoterm_sd_help() {
+    uart_print("Usage: 'sd [help|status]'\n");
+    return 0;
+}
+
+static int monoterm_sd_status() {
+    uart_print("Printing sd status\n");
+    return 0;
+}
+
+int monoterm_sd(int argc, char *argv[]) {
+    if(argc == 1) {
+        return monoterm_sd_help();
+    } else if(argc == 2) {
+        if(!strcmp(argv[1], "status")) {
+            return monoterm_sd_status();
+        } else {
+            // Command not recognized
+            return monoterm_sd_help();
+        }
+    }
+    return monoterm_sd_help();
+}

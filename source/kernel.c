@@ -2,6 +2,7 @@
 #include <kernel/version.h>
 
 #include "uart.h"
+#include "monoterm/term.h"
 #include "fs/fat32.h"
 #include "disk/sd.h"
 
@@ -29,6 +30,9 @@ void kernel_entry_point(void) {
     //    uart_print("FAT32 read BPB failed!\n");
     //}
 
-    sd_initialize();
+    // sd_initialize();
+
+    // Start monolithic kernel console
+    monoterm_start();
 }
 
