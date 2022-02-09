@@ -30,7 +30,7 @@ void kernel_entry_point(void) {
     //    uart_print("FAT32 read BPB failed!\r\n");
     //}
 
-    // sd_initialize();
+    sd_initialize();
 
     // Start monolithic kernel console
     monoterm_start();

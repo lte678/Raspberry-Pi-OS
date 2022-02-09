@@ -48,7 +48,7 @@
 #define SD_INTERRUPT_ERR (1<<15)
 #define SD_INTERRUPT_DATA_READY (1<<5)
 
-#define SDMMC_SLEEP (10000000)
+#define SDMMC_SLEEP (4000000)
 
 struct sd_cmd {
     unsigned char cmd_idx;
@@ -65,13 +65,17 @@ struct sd_cmd {
 
 struct sd_cid {
     uint8_t manufacturer;
-    uint16_t application;
-    char product_name[5];
+    char application[3];
+    char product_name[6];
     uint8_t product_rev;
-    uint32_t product_serial;
-    uint8_t _rsrvd0;
-    uint8_t _rsrvd1;
-    uint8_t _rsrvd2;    
+    uint32_t product_serial;   
+};
+
+struct sd_csd {
+	unsigned char structure;
+	unsigned char mmca_vsn;
+	unsigned short cmdclass;
+    // This is a huge strucure. Just add the ones we need
 };
 
 struct sd_status {
@@ -84,6 +88,8 @@ struct sd_status {
     unsigned char app_cmd;
     unsigned char ake_seq_error; // Unused
 };
+
+static unsigned int rca;
 
 // Shamelessly borrowed from
 // https://github.com/bztsrc/raspi3-tutorial/blob/master/0D_readfile/delays.c
@@ -203,6 +209,24 @@ static struct sd_status sd_unpack_status(unsigned int reg) {
     return s;
 }
 
+static struct sd_cid sd_unpack_cid(unsigned int r[4]) {
+    struct sd_cid cid;
+    cid.manufacturer    = (r[0] & 0x00FF0000) >> 16;
+    cid.application[0]  = (r[0] & 0x0000FF00) >> 8;
+    cid.application[1]  = (r[0] & 0x000000FF);
+    cid.application[2]  = '\0';
+    cid.product_name[0] = (r[1] & 0xFF000000) >> 24;
+    cid.product_name[1] = (r[1] & 0x00FF0000) >> 16;
+    cid.product_name[2] = (r[1] & 0x0000FF00) >> 8;
+    cid.product_name[3] = (r[1] & 0x000000FF);
+    cid.product_name[4] = (r[2] & 0xFF000000) >> 24;
+    cid.product_name[5] = '\0';
+    cid.product_rev     = (r[2] & 0x00FF0000) >> 16;
+    cid.product_serial  = (r[2] & 0x0000FFFF) << 16;
+    cid.product_serial |= (r[3] & 0xFFFF0000) >> 16;
+    return cid;
+}
+
 static int sd_exec_cmd(struct sd_cmd cmd, unsigned int arg, unsigned int *ret) {
     uint32_t cmd_word;
     cmd_word = 0;
@@ -245,13 +269,19 @@ static int sd_exec_cmd(struct sd_cmd cmd, unsigned int arg, unsigned int *ret) {
         #endif /* DEBUG_SD */
         return -1;
     }
-    *ret = get32(SDEMMC_RESP0);
-    if(cmd.response_type == 1) {
+
+    // response_type == 0 gives no result
+    if(cmd.response_type == 2) {
+        *ret = get32(SDEMMC_RESP0);
+    } else if(cmd.response_type == 1) {
         // 136 bit response
-        ret[1] = get32(SDEMMC_RESP1);
-        ret[2] = get32(SDEMMC_RESP2);
-        ret[3] = get32(SDEMMC_RESP3);
+        // Maintain correct byte ordering
+        ret[0] = get32(SDEMMC_RESP3);
+        ret[1] = get32(SDEMMC_RESP2);
+        ret[2] = get32(SDEMMC_RESP1);
+        ret[3] = get32(SDEMMC_RESP0);
     }
+
     #ifdef DEBUG_SD
     uart_print("Response for CMD");
     print_int(cmd.cmd_idx);
@@ -367,6 +397,24 @@ static int sd_exec_cmd8() {
     return 0;
 }
 
+static int sd_exec_cmd10(unsigned int rca, unsigned int *resp) {
+    // Get card information / CID (with specific RCA)
+    // Requires 16 byte buffer (or 4 uint32_t)
+    struct sd_cmd cmd;
+    cmd = (struct sd_cmd){0};
+    cmd.cmd_idx = 10;
+    cmd.index_check_en = 1;
+    cmd.crc_check_en = 1;
+    cmd.response_type = 0x01; // 136 bits
+    if(sd_exec_cmd(cmd, rca << 16, resp)) {
+        uart_print("SD card error during CMD10\r\n");
+        return -1;
+    }
+    // Reverse the string buffer. All other values are in correct order.
+
+    return 0;
+}
+
 static int sd_exec_cmd13(unsigned int rca, struct sd_status *status) {
     // Select card using RCA
     struct sd_cmd cmd;
@@ -461,31 +509,42 @@ static int sd_get_rca(unsigned int *rca, unsigned int *status) {
 
 static struct sd_cid sd_get_cid() {
     struct sd_cid cid;
+    unsigned int cid_reg[4];
     cid = (struct sd_cid){0};
 
-    if(sd_exec_cmd2((unsigned int*)&cid)) {
+    // Put card into standby mode
+    // TODO: Cache the current sd card state to avoid unnecessary context switches
+    unsigned int status;
+    if(sd_exec_cmd7(0, &status)) {
+        uart_print("SD error switching to standby\r\n");
+    }
+    // Get the CID for a card with specific RCA
+    if(sd_exec_cmd10(rca, cid_reg)) {
         uart_print("SD error returning CID\r\n");
+    }
+    cid = sd_unpack_cid(cid_reg);
+    // Switch back to transfer mode
+    if(sd_exec_cmd7(rca, &status)) {
+        uart_print("SD error switching to transfer mode\r\n");
     }
     return cid;
 }
 
-static void print_cid(struct sd_cid *cid) {
-    uart_print("Manufacturer: ");
+static void sd_print_cid(struct sd_cid *cid) {
+    uart_print("Manufacturer:  ");
     print_uint(cid->manufacturer);
     uart_print("\r\n");
-    uart_print("Application:  ");
-    print_uint(cid->application);
+    uart_print("Application:   ");
+    uart_print(cid->application);
     uart_print("\r\n");
     // TODO: memcpy
-    uart_print("Product Name: ");
-    for(int i = 0; i < 5; i++) {
-        uart_send(cid->product_name[i]);
-    }
+    uart_print("Product Name:  ");
+    uart_print(cid->product_name);
     uart_print("\r\n");
-    uart_print("Revision:     ");
+    uart_print("Revision:      ");
     print_uint(cid->product_rev);
     uart_print("\r\n");
-    uart_print("Serial Number:");
+    uart_print("Serial Number: ");
     print_uint(cid->product_serial);
     uart_print("\r\n");
 }
@@ -554,13 +613,12 @@ static int sd_reset() {
     // CMD3: Get card RCA
     // ident -> stby
     unsigned int status_reg;
-    struct sd_status status;
-    unsigned int rca;
     if(sd_get_rca(&rca, &status_reg)) {
         return -1;
     }
 
     // CMD13: Get status
+    //struct sd_status status;
     //sd_exec_cmd13(rca, &status);
     //sd_print_status(&status);
 
@@ -609,12 +667,24 @@ int sd_initialize() {
 //}
 
 static int monoterm_sd_help() {
-    uart_print("Usage: 'sd [help|status]'\r\n");
+    uart_print("Usage: 'sd [help|status|cid]'\r\n");
     return 0;
 }
 
 static int monoterm_sd_status() {
-    uart_print("Printing sd status\r\n");
+    // CMD13: Get status
+    struct sd_status status;
+    if(sd_exec_cmd13(rca, &status)) {
+        uart_print("SD card returned error for CMD13\r\n");
+        return -1;
+    }
+    sd_print_status(&status);
+    return 0;
+}
+
+static int monoterm_sd_cid() {
+    struct sd_cid cid = sd_get_cid();
+    sd_print_cid(&cid);
     return 0;
 }
 
@@ -624,6 +694,8 @@ int monoterm_sd(int argc, char *argv[]) {
     } else if(argc == 2) {
         if(!strcmp(argv[1], "status")) {
             return monoterm_sd_status();
+        } else if(!strcmp(argv[1], "cid")) {
+            return monoterm_sd_cid();
         } else {
             // Command not recognized
             return monoterm_sd_help();
