@@ -531,20 +531,20 @@ static struct sd_cid sd_get_cid() {
 }
 
 static void sd_print_cid(struct sd_cid *cid) {
-    uart_print("Manufacturer:  ");
+    uart_print("  Manufacturer:  ");
     print_uint(cid->manufacturer);
     uart_print("\r\n");
-    uart_print("Application:   ");
+    uart_print("  Application:   ");
     uart_print(cid->application);
     uart_print("\r\n");
     // TODO: memcpy
-    uart_print("Product Name:  ");
+    uart_print("  Product Name:  ");
     uart_print(cid->product_name);
     uart_print("\r\n");
-    uart_print("Revision:      ");
+    uart_print("  Revision:      ");
     print_uint(cid->product_rev);
     uart_print("\r\n");
-    uart_print("Serial Number: ");
+    uart_print("  Serial Number: ");
     print_uint(cid->product_serial);
     uart_print("\r\n");
 }

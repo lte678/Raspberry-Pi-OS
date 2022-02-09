@@ -44,7 +44,7 @@ int process_input(char *s) {
     // Find and execute command
     struct monoterm_cmd *cmd = monoterm_cmds;
     // Loop until we reach the final pseudo-token
-    while(strcmp(cmd->cmd, "_")) {
+    while(strcmp(cmd->cmd, "\0")) {
         if(!strcmp(cmd->cmd, args[0])) {
             // Returns the result/return value of the command
             return (cmd->cmd_func)(arg_i + 1, args);
