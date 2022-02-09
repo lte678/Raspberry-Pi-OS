@@ -7,15 +7,18 @@ _start:
     bic x0,x0,x1
     cbz x0,master
     b hang
-master:
 
+master:
     mov sp,#0x80000
     bl skip
 skip:
     mov x0,x30
+    bl zero_bss
     bl kernel_entry_point
+
 hang: b hang
 
+// TODO: Remove
 .globl PUT32
 PUT32:
   str w1,[x0]

@@ -1,16 +1,4 @@
-/******************************************************************************
-*	kernel.ld
-*	 by Alex Chadwick
-*
-*	A linker script for generation of raspberry pi kernel images.
-******************************************************************************/
-
 SECTIONS {
-	/*
-	* First and formost we need the .init section, containing the code to 
-        * be run first. We allow room for the ATAGs and stack and conform to 
-        * the bootloader's expectation by putting this code at 0x8000.
-	*/
 	.init 0x80000 : {
 		*(.init)
 	}
@@ -30,6 +18,15 @@ SECTIONS {
 	}
 	.rodata : {
 		*(.rodata.*)
+	}
+	
+	. = ALIGN(4);
+	.bss : {
+		__bss_start = .;
+		*(.bss)
+		/* Allows for word based clearing of BSS */
+		. = ALIGN(4);
+		__bss_end = .;
 	}
 
 	/*
