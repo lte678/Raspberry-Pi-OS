@@ -105,6 +105,7 @@ void wait_usec(unsigned int n)
     do{asm volatile ("mrs %0, cntpct_el0" : "=r"(r));}while(r<t);
 }
 
+/*
 static void sd_print_err() {
     unsigned int err = get32(SDEMMC_INTERRUPT);
     uart_print("  INTERRUPT: 0x");
@@ -139,6 +140,7 @@ static void sd_print_err() {
     print_int((err & SD_INTERRUPT_ERR) != 0);
     uart_print("\r\n");
 }
+*/
 
 static void sd_print_status(struct sd_status *s) {
     uart_print("SD Card Status:\r\n");

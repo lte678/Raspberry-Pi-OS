@@ -27,7 +27,7 @@ static char hex_char_upper(unsigned char c) {
     }
 }
 
-static char hex_char_lower(unsigned char c) {
+/* static char hex_char_lower(unsigned char c) {
     switch(c) {
     case 0:
     case 1:
@@ -50,7 +50,7 @@ static char hex_char_lower(unsigned char c) {
     default:
         return ' ';
     }
-}
+} */
 
 void print_int(int number) {
     // Theoretically, we should never surpass 12 characters (including null byte)

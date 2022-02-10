@@ -29,11 +29,11 @@ MAP = kernel.map
 LINKER = kernel.ld
 
 # Dont use glib
-OPTIONS = # -DDEBUG_SD
+OPTIONS = -DDEBUG_ALLOC # -DDEBUG_SD
 CFLAGS = -Wall -O2 -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files
-FOLDERS := fs disk monoterm
+FOLDERS := fs disk monoterm alloc
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.

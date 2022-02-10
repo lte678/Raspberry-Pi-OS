@@ -1,6 +1,7 @@
 #include <kernel/mem.h>
 #include <kernel/version.h>
 
+#include "alloc/buddy.h"
 #include "uart.h"
 #include "monoterm/term.h"
 #include "fs/fat32.h"
@@ -30,8 +31,8 @@ void kernel_entry_point(void) {
     //    uart_print("FAT32 read BPB failed!\r\n");
     //}
 
+    init_buddy_allocator();
     sd_initialize();
-
     // Start monolithic kernel console
     monoterm_start();
 }
