@@ -1,5 +1,6 @@
 #include <kernel/mem.h>
 #include <kernel/version.h>
+#include <kernel/delay.h>
 
 #include "alloc/buddy.h"
 #include "uart.h"
@@ -7,10 +8,13 @@
 #include "fs/fat32.h"
 #include "disk/sd.h"
 
+
 void kernel_entry_point(void) {
     //struct bios_parameter_block bpb;
     char ver_str[8];
     
+    wait_usec(1500000);
+
     uart_init();
     uart_print("Booting LXE...\r\n");
     uart_print("Developed by Leon Teichroeb :)\r\n");

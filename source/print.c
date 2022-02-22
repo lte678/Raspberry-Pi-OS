@@ -73,6 +73,26 @@ void print_uint(unsigned int number) {
     uart_print("ERR");
 }
 
+void print_long(long number) {
+    // Theoretically, we should never surpass 21 characters (including null byte)
+    char buff[21];
+    if(ltos(number, buff, sizeof(buff)) > 0) {
+        uart_print(buff);
+        return;
+    }
+    uart_print("ERR");
+}
+
+void print_ulong(unsigned long number) {
+    // Theoretically, we should never surpass 21 characters (including null byte)
+    char buff[21];
+    if(ultos(number, buff, sizeof(buff)) > 0) {
+        uart_print(buff);
+        return;
+    }
+    uart_print("ERR");
+}
+
 void print_hex(unsigned char* bytes, unsigned short n) {
     char buff[3];
     int i;

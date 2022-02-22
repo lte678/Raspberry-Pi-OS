@@ -1,9 +1,9 @@
-int itos(int num, char *buffer, unsigned int n) {
+int ltos(long num, char *buffer, unsigned int n) {
     int i;
     int j;
     int digit;
     unsigned char sign;
-    char tmp_buffer[12];
+    char tmp_buffer[21];
 
     if(n > sizeof(tmp_buffer)) {
         n = sizeof(tmp_buffer);
@@ -16,7 +16,7 @@ int itos(int num, char *buffer, unsigned int n) {
         sign = 1;
     }
     for(i = 0; i < (n - 2); i++) {
-        digit = (num % 10);
+        digit = (num % 10u);
         num = (num - digit) / 10;
 
         tmp_buffer[i] = '0' + digit;
@@ -44,18 +44,18 @@ int itos(int num, char *buffer, unsigned int n) {
     return -1;
 }
 
-int utos(unsigned int num, char *buffer, unsigned int n) {
+int ultos(unsigned long num, char *buffer, unsigned int n) {
     int i;
     int j;
     int digit;
-    char tmp_buffer[12];
+    char tmp_buffer[21];
 
     if(n > sizeof(tmp_buffer)) {
         n = sizeof(tmp_buffer);
     }
 
     for(i = 0; i < (n - 1); i++) {
-        digit = (num % 10);
+        digit = (num % 10u);
         num = (num - digit) / 10;
 
         tmp_buffer[i] = '0' + digit;
@@ -76,6 +76,14 @@ int utos(unsigned int num, char *buffer, unsigned int n) {
     buffer[n - 1] = '\0';
 
     return -1;
+}
+
+int itos(int num, char *buffer, unsigned int n) {
+    return ltos((long)num, buffer, n);
+}
+
+int utos(unsigned int num, char *buffer, unsigned int n) {
+    return ultos((unsigned long)num, buffer, n);
 }
 
 int strcmp(char *s1, char *s2) {

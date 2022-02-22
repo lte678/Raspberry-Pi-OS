@@ -1,6 +1,7 @@
 #include <kernel/register.h>
 #include <kernel/print.h>
 #include <kernel/types.h>
+#include <kernel/delay.h>
 
 #define SDEMMC_BASE 0x3F300000
 
@@ -90,20 +91,6 @@ struct sd_status {
 };
 
 static unsigned int rca;
-
-// Shamelessly borrowed from
-// https://github.com/bztsrc/raspi3-tutorial/blob/master/0D_readfile/delays.c
-void wait_usec(unsigned int n)
-{
-    register unsigned long f, t, r;
-    // get the current counter frequency
-    asm volatile ("mrs %0, cntfrq_el0" : "=r"(f));
-    // read the current counter
-    asm volatile ("mrs %0, cntpct_el0" : "=r"(t));
-    // calculate expire value for counter
-    t+=((f/1000)*n)/1000;
-    do{asm volatile ("mrs %0, cntpct_el0" : "=r"(r));}while(r<t);
-}
 
 /*
 static void sd_print_err() {

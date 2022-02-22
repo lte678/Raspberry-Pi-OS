@@ -8,6 +8,8 @@ extern void uart_send(unsigned char c);
 extern void uart_print(char *string);
 extern void print_int(int number);
 extern void print_uint(unsigned int number);
+extern void print_long(long number);
+extern void print_ulong(unsigned long number);
 extern void print_hex(unsigned char* bytes, unsigned short n);
 extern void print_hex_uint32(unsigned int num);
 // extern void print_uint(unsigned int number);
