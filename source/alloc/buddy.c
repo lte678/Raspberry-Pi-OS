@@ -3,7 +3,8 @@
 
 #define MAX_MEM_BLK_SIZE 31
 // Allocate at least 512 bytes at once
-#define MIN_BLK_BYTES 512
+#define MEM_BLK_ATOM_SIZE 9
+#define MIN_BLK_BYTES (1 << MEM_BLK_ATOM_SIZE)
 
 #define BLK_HEAD_IDX(x) (MAX_MEM_BLK_SIZE - x)
 
@@ -16,6 +17,7 @@ struct mem_blk {
     struct mem_blk *next_alloc;
     char blk_size;
     char allocated;
+    void *start_addr;
 };
 
 // Allow for early memory block initialization
@@ -93,7 +95,7 @@ static void free_block(struct mem_blk *b) {
     
 }
 
-static struct mem_blk *alloc_new_block(char size) {
+static struct mem_blk *alloc_new_block(char size, void* addr) {
     // Get block from stack memory
     if(pre_blk_count > 127) {
         uart_print("Error: alloc_new_block: Reached mem_blk limit!\r\n");
@@ -108,6 +110,9 @@ static struct mem_blk *alloc_new_block(char size) {
     b->child2 = 0;
     b->next = 0;
     b->prev = 0;
+    b->prev_alloc = 0;
+    b->next_alloc = 0;
+    b->start_addr = addr;
     // Put block into free list
     free_block(b);
     return b;
@@ -115,8 +120,9 @@ static struct mem_blk *alloc_new_block(char size) {
 
 static void split_block(struct mem_blk *b) {
     if(b->blk_size > 0) {
-        b->child1 = alloc_new_block(b->blk_size - 1);
-        b->child2 = alloc_new_block(b->blk_size - 1);
+        unsigned long child_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE - 1);
+        b->child1 = alloc_new_block(b->blk_size - 1, b->start_addr);
+        b->child2 = alloc_new_block(b->blk_size - 1, (void*)((unsigned long)b->start_addr | child_addr_mask));
     }
     // Mark block as used. Its children are now available
     unfree_block(b);
@@ -172,12 +178,18 @@ void kmalloc(unsigned long size) {
     print_ulong(size_to_bytes(i));
     uart_print(" byte block (level: ");
     print_int(i);
-    uart_print(")\r\n");
+    uart_print(") at addr ");
+    print_ulong((unsigned long)b->start_addr);
+    uart_print("\r\n");
     #endif
 }
 
 void init_buddy_allocator() {
-    if(!alloc_new_block(MAX_MEM_BLK_SIZE)) {
+    // Creates superblock starting at address 0
+    uart_print("Initializing buddy allocator with block size ");
+    print_int(MIN_BLK_BYTES);
+    uart_print("\r\n");
+    if(!alloc_new_block(MAX_MEM_BLK_SIZE, 0)) {
         uart_print("Failed to create root block!\r\n");
     }
     #ifdef DEBUG_BUDDY
