@@ -1,7 +1,7 @@
 #include <kernel/print.h>
 
 
-#define MAX_MEM_BLK_SIZE 31
+#define MAX_MEM_BLK_SIZE 11
 // Allocate at least 512 bytes at once
 #define MEM_BLK_ATOM_SIZE 9
 #define MIN_BLK_BYTES (1 << MEM_BLK_ATOM_SIZE)
@@ -45,6 +45,9 @@ static void unfree_block(struct mem_blk *b) {
     }
     if(prev) {
         prev->next = next;
+    } else {
+        // Start of list
+        blk_heads[BLK_HEAD_IDX(b->blk_size)] = next;
     }
 
     /*
@@ -122,7 +125,7 @@ static void split_block(struct mem_blk *b) {
     if(b->blk_size > 0) {
         unsigned long child_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE - 1);
         b->child1 = alloc_new_block(b->blk_size - 1, b->start_addr);
-        b->child2 = alloc_new_block(b->blk_size - 1, (void*)((unsigned long)b->start_addr | child_addr_mask));
+        b->child2 = alloc_new_block(b->blk_size - 1, (void*)((unsigned long)b->start_addr ^ child_addr_mask));
     }
     // Mark block as used. Its children are now available
     unfree_block(b);
@@ -197,6 +200,11 @@ void init_buddy_allocator() {
     kmalloc(511);
     kmalloc(1500);
     kmalloc(512);
+    kmalloc(1);
+    kmalloc(1);
+    kmalloc(1);
+    kmalloc(3000);
+    kmalloc(1040);
     #endif
 }
 
