@@ -1,10 +1,12 @@
 #include <kernel/print.h>
+#include <kernel/types.h>
 
 
 #define MAX_MEM_BLK_SIZE 11
 // Allocate at least 512 bytes at once
 #define MEM_BLK_ATOM_SIZE 9
 #define MIN_BLK_BYTES (1 << MEM_BLK_ATOM_SIZE)
+#define MEM_BLK_BYTES(size) (1 << (MEM_BLK_ATOM_SIZE + size))
 
 #define BLK_HEAD_IDX(x) (MAX_MEM_BLK_SIZE - x)
 
@@ -20,6 +22,8 @@ struct mem_blk {
     void *start_addr;
 };
 
+// Pointer to root block
+static struct mem_blk *buddy_root_block;
 // Allow for early memory block initialization
 static struct mem_blk pre_blks[128];
 static int pre_blk_count = 0;
@@ -66,6 +70,7 @@ static void use_block(struct mem_blk *b) {
         b->next_alloc = allocated;
     }
     allocated = b;
+    b->allocated = 1;
 }
 
 static void free_block(struct mem_blk *b) {
@@ -192,7 +197,8 @@ void init_buddy_allocator() {
     uart_print("Initializing buddy allocator with block size ");
     print_int(MIN_BLK_BYTES);
     uart_print("\r\n");
-    if(!alloc_new_block(MAX_MEM_BLK_SIZE, 0)) {
+    buddy_root_block = alloc_new_block(MAX_MEM_BLK_SIZE, 0);
+    if(!buddy_root_block) {
         uart_print("Failed to create root block!\r\n");
     }
     #ifdef DEBUG_BUDDY
@@ -216,4 +222,39 @@ unsigned long memory_allocated() {
         b = b->next_alloc;
     }
     return sum;
+}
+
+static void print_block(struct mem_blk *b, char start_depth) {
+    term_set_cursor_column((start_depth - b->blk_size) * 2 + 1);
+    print_hex_uint32((uint32_t)b->start_addr);
+    uart_print(" - ");
+    print_hex_uint32((uint32_t)b->start_addr + MEM_BLK_BYTES(b->blk_size));
+    if(b->allocated) {
+        term_set_cursor_column(start_depth * 2 + 1 + 20);
+        uart_print(" [allocated]");
+    }
+    uart_print("\r\n");
+    if(b->child1 || b->child2) {
+        // Block is split
+        print_block(b->child1, start_depth);
+        print_block(b->child2, start_depth);
+    } else {
+        // Block is not split
+    }
+}
+
+int monoterm_buddy_print_map(int argc, char* argv[]) {
+    struct mem_blk *b = buddy_root_block;
+    while(b) {
+        if(b->child1 || b->child2) {
+            if(!b->child2->child1) {
+                // Child 2 does not lead anywhere. Trim.
+                b = b->child1;
+            } else {
+                break;
+            }
+        }
+    }
+    print_block(b, b->blk_size);
+    return 0;
 }

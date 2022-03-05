@@ -115,3 +115,24 @@ void print_hex_uint32(unsigned int num) {
 
     print_hex(repr, 4);
 }
+
+
+// Terminal control commands
+
+void term_set_cursor(int x, int y) {
+    uart_print("\x1B[");
+    print_int(x);
+    uart_print(";");
+    print_int(y);
+    uart_print("H");
+}
+
+void term_set_cursor_column(int x) {
+    uart_print("\x1B[");
+    print_int(x);
+    uart_print("G");
+}
+
+void term_set_cursor_row(int x) {
+    // TODO
+}

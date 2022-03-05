@@ -14,5 +14,9 @@ extern void print_hex(unsigned char* bytes, unsigned short n);
 extern void print_hex_uint32(unsigned int num);
 // extern void print_uint(unsigned int number);
 
+// Terminal control commands
+extern void term_set_cursor(int x, int y);
+extern void term_set_cursor_column(int x);
+extern void term_set_cursor_row(int x);
 
 #endif  // PRINT_H
