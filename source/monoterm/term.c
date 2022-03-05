@@ -55,10 +55,16 @@ int process_input(char *s) {
     return -1;
 }
 
+static void print_prompt() {
+    term_set_bold();
+    uart_print(">>>");
+    term_reset_font();
+}
+
 void monoterm_start() {
     char input[MAX_INPUT_LENGTH];
 
-    uart_print(">");
+    print_prompt();
     int input_i = 0;
     char prev = '\0'; // To check whether the last character was an escape
     while(1) {
@@ -72,7 +78,7 @@ void monoterm_start() {
                 uart_print("Command terminated with error.\r\n");
             }
             // Display new prompt
-            uart_print(">");
+            print_prompt();
             input_i = 0;
         } else if(c == '\x7F' || c == '\x08') {
             // Handle backspace

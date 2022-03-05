@@ -136,3 +136,11 @@ void term_set_cursor_column(int x) {
 void term_set_cursor_row(int x) {
     // TODO
 }
+
+void term_set_bold() {
+    uart_print("\x1B[1m");
+}
+
+void term_reset_font() {
+    uart_print("\x1B[0m");
+}

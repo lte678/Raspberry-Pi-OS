@@ -20,8 +20,8 @@ int monoterm_memstat(int argc, char *argv[]) {
         // One argument
         if(!strcmp(argv[1], "map")) {
             monoterm_buddy_print_map(argc, argv);
+            return 0;
         }
-        return 0;
     }
     
     uart_print("Usage: memstat [map]\r\n");

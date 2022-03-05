@@ -18,5 +18,7 @@ extern void print_hex_uint32(unsigned int num);
 extern void term_set_cursor(int x, int y);
 extern void term_set_cursor_column(int x);
 extern void term_set_cursor_row(int x);
+extern void term_set_bold();
+extern void term_reset_font();
 
 #endif  // PRINT_H
