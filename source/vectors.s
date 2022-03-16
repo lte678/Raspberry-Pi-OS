@@ -9,7 +9,8 @@ _start:
     b hang
 
 master:
-    mov sp,#0x80000
+    ldr x0, =__sp
+    mov sp, x0
     bl skip
 skip:
     mov x0,x30

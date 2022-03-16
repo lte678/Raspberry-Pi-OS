@@ -1,5 +1,19 @@
+
+
 SECTIONS {
-	.init 0x80000 : {
+	__static_memory_start = .;
+
+	/* The kernel entry point:  */
+
+	__entry_point = 0x80000;
+
+	.stack : {
+		. = __entry_point;
+		__sp = .;
+	}
+
+	/* Address = __entry_point */
+	.init : {
 		*(.init)
 	}
 	
@@ -28,6 +42,7 @@ SECTIONS {
 		. = ALIGN(4);
 		__bss_end = .;
 	}
+	__static_memory_end = .;
 
 	/*
 	* Finally comes everything else. A fun trick here is to put all other 
