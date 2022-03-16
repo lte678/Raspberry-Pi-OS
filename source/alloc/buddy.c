@@ -170,7 +170,7 @@ static struct mem_blk *next_free_block(int size) {
     }
 }
 
-void kmalloc(unsigned long size) {
+void* kmalloc(unsigned long size) {
     int i = 0;
     while(size_to_bytes(i) < size) {
         i++;
@@ -178,9 +178,7 @@ void kmalloc(unsigned long size) {
     struct mem_blk *b = next_free_block(i);
     use_block(b);
     unfree_block(b);
-    //if(b == 0) {
-    //
-    //}
+    
     #ifdef DEBUG_BUDDY
     uart_print("Found free ");
     print_ulong(size_to_bytes(i));
@@ -190,6 +188,8 @@ void kmalloc(unsigned long size) {
     print_ulong((unsigned long)b->start_addr);
     uart_print("\r\n");
     #endif
+
+    return b->start_addr;
 }
 
 void init_buddy_allocator() {
