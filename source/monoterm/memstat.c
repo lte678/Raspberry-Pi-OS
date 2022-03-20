@@ -14,6 +14,10 @@ extern uint32_t __static_memory_end[];
 static void print_memory_usage() {
     print_ulong(memory_allocated());
     uart_print(" bytes allocated\r\n");
+    print_ulong(buddy_used_block_structs());
+    uart_print(" mem_blk structs used\r\n");
+    print_ulong(buddy_free_block_structs());
+    uart_print(" mem_blk structs free\r\n");
 }
 
 static void print_regions() {
@@ -28,6 +32,7 @@ static void print_regions() {
     print_hex_uint32((uint64_t)buddy_heap_end());
     uart_print("\r\n");
 }
+
 
 int monoterm_memstat(int argc, char *argv[]) {
     if(argc == 1) {

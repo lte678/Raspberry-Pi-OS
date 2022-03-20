@@ -8,6 +8,8 @@
 #define MIN_BLK_BYTES (1 << MEM_BLK_ATOM_SIZE)
 #define MEM_BLK_BYTES(size) (1 << (MEM_BLK_ATOM_SIZE + size))
 
+#define PRE_BLK_MAX_COUNT 128
+
 #define BLK_HEAD_IDX(x) (MAX_MEM_BLK_SIZE - x)
 
 extern uint32_t __static_memory_end[];
@@ -31,7 +33,7 @@ struct mem_blk {
 };
 
 // Allow for early memory block initialization
-static struct mem_blk pre_blks[128];
+static struct mem_blk pre_blks[PRE_BLK_MAX_COUNT];
 // Number of allocated blocks from pre_blks region
 static int pre_blk_count = 0;
 // Heads of mem_blk lists with specific sizes
@@ -125,7 +127,7 @@ static void block_mark_allocated(struct mem_blk *b) {
 
 static struct mem_blk *alloc_new_block(char size, void* addr) {
     // Get block from stack memory
-    if(pre_blk_count > 127) {
+    if(pre_blk_count > PRE_BLK_MAX_COUNT - 1) {
         uart_print("Error: alloc_new_block: Reached mem_blk limit!\r\n");
         return 0;
     }
@@ -226,7 +228,7 @@ int init_buddy_allocator() {
 
     // Figure out heap limits
     unsigned int blk_mask = MAX_MEM_BLK_SIZE + MEM_BLK_ATOM_SIZE;
-    heap_end = (void*)((0x00400000ul >> blk_mask) << blk_mask);
+    heap_end = (void*)((0x01000000ul >> blk_mask) << blk_mask);
     void* heap_min_limit = __static_memory_end;
     if(heap_end < heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
         uart_print("Failed to allocate buddy blocks: Insufficient memory!\r\n");
@@ -236,12 +238,14 @@ int init_buddy_allocator() {
     }
 
     // Iterate over memory region and fill with blocks.
-    void* block_p = heap_end - size_to_bytes(MAX_MEM_BLK_SIZE);
-    while(block_p >= heap_min_limit) {
-        alloc_new_block(MAX_MEM_BLK_SIZE, block_p);
+    uint64_t block_p = (uint64_t)heap_end;
+    while(block_p >= (uint64_t)heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
         block_p -= size_to_bytes(MAX_MEM_BLK_SIZE);
+        if(!alloc_new_block(MAX_MEM_BLK_SIZE, (void*)block_p)) {
+            return 1;
+        }
     }
-    heap_start = block_p + size_to_bytes(MAX_MEM_BLK_SIZE);
+    heap_start = (void*)(block_p);
 
     #ifdef DEBUG_BUDDY
     uart_print("Allocating block...\r\n");
@@ -279,6 +283,16 @@ void* buddy_heap_start() {
 
 void* buddy_heap_end() {
     return heap_end;
+}
+
+
+unsigned int buddy_free_block_structs() {
+    return PRE_BLK_MAX_COUNT - pre_blk_count;
+}
+
+
+unsigned int buddy_used_block_structs() {
+    return pre_blk_count;
 }
 
 
