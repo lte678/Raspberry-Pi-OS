@@ -226,9 +226,9 @@ unsigned long memory_allocated() {
 
 static void print_block(struct mem_blk *b, char start_depth) {
     term_set_cursor_column((start_depth - b->blk_size) * 2 + 1);
-    print_hex_uint32((uint32_t)b->start_addr);
+    print_hex_uint32((uint64_t)b->start_addr);
     uart_print(" - ");
-    print_hex_uint32((uint32_t)b->start_addr + MEM_BLK_BYTES(b->blk_size));
+    print_hex_uint32((uint64_t)b->start_addr + MEM_BLK_BYTES(b->blk_size));
     if(b->allocated) {
         term_set_cursor_column(start_depth * 2 + 1 + 20);
         uart_print(" [allocated]");
