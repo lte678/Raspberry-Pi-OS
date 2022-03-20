@@ -8,6 +8,11 @@
 #include "fs/fat32.h"
 #include "disk/sd.h"
 
+_Noreturn void panic() {
+    uart_print("### KERNEL PANIC ###\r\n");
+    while(1);
+}
+
 
 void kernel_entry_point(void) {
     //struct bios_parameter_block bpb;
@@ -35,7 +40,9 @@ void kernel_entry_point(void) {
     //    uart_print("FAT32 read BPB failed!\r\n");
     //}
 
-    init_buddy_allocator();
+    if(init_buddy_allocator()) {
+        panic();
+    }
     sd_initialize();
     // Start monolithic kernel console
     monoterm_start();

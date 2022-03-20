@@ -7,13 +7,16 @@ SECTIONS {
 
 	__entry_point = 0x80000;
 
+    __stack_start = .;
 	.stack : {
 		. = __entry_point;
 		__sp = .;
+		__stack_end = .;
 	}
 
 	/* Address = __entry_point */
 	.init : {
+	    __text_start = .;
 		*(.init)
 	}
 	
@@ -23,16 +26,19 @@ SECTIONS {
 	.text : {
 		*(.text)
 	}
-	
+	__text_end = .;
+
 	/* 
 	* Next we put the data.
 	*/
 	.data : {
+	    __data_start = .;
 		*(.data)
 	}
 	.rodata : {
 		*(.rodata .rodata.*)
 	}
+	__data_end = .;
 	
 	. = ALIGN(4);
 	.bss : {

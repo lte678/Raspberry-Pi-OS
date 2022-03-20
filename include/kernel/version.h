@@ -3,9 +3,14 @@
 
 #include <kernel/string.h>
 
+/*
+ * VERSION HISTORY
+ * v0.2: Added buddy block allocator
+ * v0.3: Buddy block allocator rewrite
+ */
 
 #define MAJOR_VERSION 0
-#define MINOR_VERSION 2
+#define MINOR_VERSION 3
 
 int version_str(char *buf, unsigned int n) {
     int written;
