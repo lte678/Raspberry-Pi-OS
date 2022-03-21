@@ -3,6 +3,8 @@
 #include "pool.h"
 
 
+// TODO: Hashing based on max-sized block address, to reduce free-lookups to O(1) complexity
+
 #define MAX_MEM_BLK_SIZE 11
 // Allocate at least 512 bytes at once
 #define MEM_BLK_ATOM_SIZE 9
@@ -166,9 +168,10 @@ static void merge_blocks(struct mem_blk *b) {
     }
     uint64_t parent_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE - 1);
     void *parent_addr = (void*)((uint64_t)b->start_addr & ~parent_addr_mask);
-    struct mem_blk *i = blk_heads[BLK_HEAD_IDX(b->blk_size + 1)];
+    struct mem_blk *i = blk_all_head;
     while(i) {
-        if(i->start_addr == parent_addr) {
+        if(i->start_addr == parent_addr && i->blk_size == b->blk_size + 1) {
+            // We found our parent block
             pool_free(&buddy_pool, i->child1);
             i->child1 = 0;
             pool_free(&buddy_pool, i->child2);
@@ -320,20 +323,6 @@ int init_buddy_allocator() {
         uart_print("Failed to reserve buddy block for early pool allocator.\r\n");
         return 1;
     }
-
-    #ifdef DEBUG_BUDDY
-    uart_print("Allocating block...\r\n");
-    kmalloc(511);
-    kmalloc(1500);
-    kmalloc(512);
-    kmalloc(1);
-    kmalloc(1);
-    kmalloc(1);
-    kmalloc(3000);
-    kmalloc(1040);
-
-
-    #endif
 
     return 0;
 }
