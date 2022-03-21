@@ -1,5 +1,6 @@
 #include <kernel/print.h>
 #include <kernel/types.h>
+#include "pool.h"
 
 
 #define MAX_MEM_BLK_SIZE 11
@@ -8,7 +9,7 @@
 #define MIN_BLK_BYTES (1 << MEM_BLK_ATOM_SIZE)
 #define MEM_BLK_BYTES(size) (1 << (MEM_BLK_ATOM_SIZE + size))
 
-#define PRE_BLK_MAX_COUNT 128
+#define INITIAL_POOL_SIZE 6
 
 #define BLK_HEAD_IDX(x) (MAX_MEM_BLK_SIZE - x)
 
@@ -32,10 +33,9 @@ struct mem_blk {
     void *start_addr;
 };
 
-// Allow for early memory block initialization
-static struct mem_blk pre_blks[PRE_BLK_MAX_COUNT];
-// Number of allocated blocks from pre_blks region
-static int pre_blk_count = 0;
+// Pool allocator for mem_blk objects
+static struct memory_pool buddy_pool;
+
 // Heads of mem_blk lists with specific sizes
 // size 2^32 is a index 0
 static struct mem_blk *blk_heads[MAX_MEM_BLK_SIZE + 1];
@@ -46,7 +46,6 @@ static struct mem_blk *blk_all_head;
 static void* heap_start;
 // End of heap
 static void* heap_end;
-
 
 /*!
  * Converts the buddy block size to the number of bytes it occupies.
@@ -91,6 +90,7 @@ static void unfree_block(struct mem_blk *b) {
 
 /*!
  * Puts a block into the free collection. Clears the allocated flag.
+ * Does not check for possible block merge operations.
  * @param b     The block to free.
  */
 static void free_block(struct mem_blk *b) {
@@ -110,7 +110,6 @@ static void free_block(struct mem_blk *b) {
     uart_print("\r\n");
     #endif
     */
-    
 }
 
 
@@ -126,13 +125,7 @@ static void block_mark_allocated(struct mem_blk *b) {
 
 
 static struct mem_blk *alloc_new_block(char size, void* addr) {
-    // Get block from stack memory
-    if(pre_blk_count > PRE_BLK_MAX_COUNT - 1) {
-        uart_print("Error: alloc_new_block: Reached mem_blk limit!\r\n");
-        return 0;
-    }
-    struct mem_blk *b = &pre_blks[pre_blk_count];
-    pre_blk_count++;
+    struct mem_blk *b = pool_alloc(&buddy_pool);
     // Initialize struct
     b->blk_size = size;
     b->allocated = 0;
@@ -160,6 +153,62 @@ static void split_block(struct mem_blk *b) {
     }
     // Mark block as used. Its children are now available
     unfree_block(b);
+}
+
+
+/*!
+ * Traverses the block binary tree starting at a leaf and preforms all possible merges.
+ * \param b     A leaf block
+ */
+static void merge_blocks(struct mem_blk *b) {
+    if(b->blk_size >= MAX_MEM_BLK_SIZE) {
+        return;
+    }
+    uint64_t parent_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE - 1);
+    void *parent_addr = (void*)((uint64_t)b->start_addr & ~parent_addr_mask);
+    struct mem_blk *i = blk_heads[BLK_HEAD_IDX(b->blk_size + 1)];
+    while(i) {
+        if(i->start_addr == parent_addr) {
+            pool_free(&buddy_pool, i->child1);
+            i->child1 = 0;
+            pool_free(&buddy_pool, i->child2);
+            i->child2 = 0;
+            free_block(i);
+            merge_blocks(i);
+        }
+        i = i->next;
+    }
+}
+
+
+static int buddy_reserve_block(void* addr, int size) {
+    struct mem_blk *b = blk_heads[BLK_HEAD_IDX(MAX_MEM_BLK_SIZE)];
+    while(b) {
+        if(b->start_addr == addr) {
+            break;
+        }
+        b = b->next_free;
+    }
+    // No free block
+    if(!b) {
+        return 1;
+    }
+    while(b->blk_size > size) {
+        if(!b->child1) {
+            split_block(b);
+        }
+
+        if(b->child1->start_addr == addr && !b->child1->allocated) {
+            b = b->child1;
+        } else if(b->child2->start_addr == addr && !b->child2->allocated) {
+            b = b->child2;
+        } else {
+            return 1;
+        }
+    }
+    // Block of right size at right address located
+    block_mark_allocated(b);
+    return 0;
 }
 
 
@@ -220,6 +269,20 @@ void* kmalloc(unsigned long size) {
 }
 
 
+void free(void* memory) {
+    struct mem_blk *b = blk_all_head;
+    while(b) {
+        if(b->start_addr == memory && b->allocated) {
+            free_block(b);
+            merge_blocks(b);
+            return;
+        }
+        b = b->next;
+    }
+    uart_print("Attempted to free invalid pointer!\r\n");
+}
+
+
 int init_buddy_allocator() {
     // Creates superblock starting at address 0
     uart_print("Initializing buddy allocator with block size ");
@@ -227,9 +290,9 @@ int init_buddy_allocator() {
     uart_print("\r\n");
 
     // Figure out heap limits
-    unsigned int blk_mask = MAX_MEM_BLK_SIZE + MEM_BLK_ATOM_SIZE;
-    heap_end = (void*)((0x01000000ul >> blk_mask) << blk_mask);
-    void* heap_min_limit = __static_memory_end;
+    uint64_t max_blk_mask = size_to_bytes(MAX_MEM_BLK_SIZE) - 1;
+    heap_end = (void*)((0x01000000ul + max_blk_mask) & ~max_blk_mask);
+    void* heap_min_limit = (void*)(((uint64_t)__static_memory_end + max_blk_mask) & ~max_blk_mask);
     if(heap_end < heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
         uart_print("Failed to allocate buddy blocks: Insufficient memory!\r\n");
         print_ulong(heap_end - heap_min_limit);
@@ -237,6 +300,11 @@ int init_buddy_allocator() {
         return 1;
     }
 
+    // Early initialize memory pool
+    // TODO: Find lowest address.
+    buddy_pool = pool_create_pool_using_memory(sizeof(struct mem_blk),
+        MEM_BLK_BYTES(INITIAL_POOL_SIZE),
+        heap_min_limit);
     // Iterate over memory region and fill with blocks.
     uint64_t block_p = (uint64_t)heap_end;
     while(block_p >= (uint64_t)heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
@@ -246,6 +314,12 @@ int init_buddy_allocator() {
         }
     }
     heap_start = (void*)(block_p);
+
+    // Reserve the block we gave to the memory pool
+    if(buddy_reserve_block(heap_min_limit, INITIAL_POOL_SIZE)) {
+        uart_print("Failed to reserve buddy block for early pool allocator.\r\n");
+        return 1;
+    }
 
     #ifdef DEBUG_BUDDY
     uart_print("Allocating block...\r\n");
@@ -257,6 +331,8 @@ int init_buddy_allocator() {
     kmalloc(1);
     kmalloc(3000);
     kmalloc(1040);
+
+
     #endif
 
     return 0;
@@ -287,12 +363,12 @@ void* buddy_heap_end() {
 
 
 unsigned int buddy_free_block_structs() {
-    return PRE_BLK_MAX_COUNT - pre_blk_count;
+    return buddy_pool.free_objects;
 }
 
 
 unsigned int buddy_used_block_structs() {
-    return pre_blk_count;
+    return buddy_pool.objects - buddy_pool.free_objects;
 }
 
 

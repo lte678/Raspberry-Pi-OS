@@ -11,6 +11,7 @@ struct memory_pool {
 };
 
 struct memory_pool pool_create_pool(unsigned int object_size, unsigned int block_size);
+struct memory_pool pool_create_pool_using_memory(unsigned int object_size, unsigned int block_bytes, void* block);
 void* pool_alloc(struct memory_pool *p);
 void pool_free(struct memory_pool *p, void* object);
 
