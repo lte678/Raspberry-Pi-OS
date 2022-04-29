@@ -350,7 +350,7 @@ int init_buddy_allocator() {
 
     // Figure out heap limits
     uint64_t max_blk_mask = size_to_bytes(MAX_MEM_BLK_SIZE) - 1;
-    heap_end = (void*)((0x00400000ul + max_blk_mask) & ~max_blk_mask);
+    heap_end = (void*)((0x40000000ul + max_blk_mask) & ~max_blk_mask);
     void* heap_min_limit = (void*)(((uint64_t)__static_memory_end + max_blk_mask) & ~max_blk_mask);
     if(heap_end < heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
         uart_print("Failed to allocate buddy blocks: Insufficient memory!\r\n");

@@ -9,10 +9,10 @@ static void pool_allocate_new_block(struct memory_pool *p, void* new_block) {
     if(!new_block) {
         p->no_new_block = 1;
         new_block = kmalloc(p->block_size * p->object_size);
+        p->no_new_block = 0;
         if(!new_block) {
             return;
         }
-        p->no_new_block = 0;
     } 
     void* start_of_list = new_block;
     /* *(void**)new_block = sets the pointer of the newly created block */
