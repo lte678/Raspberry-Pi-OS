@@ -1,4 +1,5 @@
 #include <kernel/alloc.h>
+#include <kernel/print.h>
 
 #include "pool.h"
 
@@ -6,7 +7,12 @@
 static void pool_allocate_new_block(struct memory_pool *p, void* new_block) {
     /* Create a new block of objects and prepend them to the 'free' linked list. */
     if(!new_block) {
+        p->no_new_block = 1;
         new_block = kmalloc(p->block_size * p->object_size);
+        if(!new_block) {
+            return;
+        }
+        p->no_new_block = 0;
     } 
     void* start_of_list = new_block;
     /* *(void**)new_block = sets the pointer of the newly created block */
@@ -58,6 +64,7 @@ struct memory_pool pool_create_pool_using_memory(unsigned int object_size, unsig
     p.next_free = 0;
     p.objects = 0;
     p.free_objects = 0;
+    p.no_new_block = 0;
 
     /* Add at least one block to the pool */
     pool_allocate_new_block(&p, block);
@@ -67,13 +74,18 @@ struct memory_pool pool_create_pool_using_memory(unsigned int object_size, unsig
 
 
 void* pool_alloc(struct memory_pool *p) {
-    if(!p->next_free) {
+    int free_percent = (p->free_objects * 100) / (p->objects);
+    if(free_percent < 20 && !p->no_new_block) {
+        // We are allowed to allocate a new block
+        pool_allocate_new_block(p, 0);
+    }
+    if(!p->next_free && !p->no_new_block) {
         /* Try allocating */
         pool_allocate_new_block(p, 0);
-        if(!p->next_free) {
-            /* Fail otherwise */
-            return 0;
-        }
+    }
+    if(!p->next_free) {
+        /* Fail otherwise */
+        return 0;
     }
 
     /* next_free is guaranteed to point to valid memory */
@@ -83,13 +95,23 @@ void* pool_alloc(struct memory_pool *p) {
 
     /* Update counter */
     p->free_objects--;
+    // uart_print("pool alloc: ");
+    // print_address(free);
+    // uart_print("\r\n");
     return free;
 }
 
 void pool_free(struct memory_pool *p, void* object) {
+    if(!object) {
+        uart_print("Tried to free null pointer!\r\n");
+        return;
+    }
     *(void**)object = p->next_free;
     p->next_free = object;
 
     /*Update counter*/
     p->free_objects++;
+    //uart_print("pool.free_objects=");
+    //print_int(p->free_objects);
+    //uart_print("\r\n");
 }

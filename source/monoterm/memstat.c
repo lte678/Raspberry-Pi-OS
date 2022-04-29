@@ -5,6 +5,7 @@
 
 
 extern monoterm_func monoterm_buddy_print_map;
+extern monoterm_func monoterm_buddy_print_free_lists;
 
 // Linkers symbols to print memory regions
 extern uint32_t __static_memory_start[];
@@ -39,17 +40,18 @@ int monoterm_memstat(int argc, char *argv[]) {
         // No argument
         print_memory_usage();
         return 0;
-    } else if(argc == 2) {
-        // One argument
+    } else if(argc >= 2) {
+        // One or more arguments
         if(!strcmp(argv[1], "map")) {
-            monoterm_buddy_print_map(argc, argv);
-            return 0;
+            return monoterm_buddy_print_map(argc, argv);
         } else if(!strcmp(argv[1], "regions")) {
             print_regions();
             return 0;
+        } else if(!strcmp(argv[1], "free_lists")) {
+            return monoterm_buddy_print_free_lists(argc, argv);
         }
     }
     
-    uart_print("Usage: memstat [map|regions]\r\n");
+    uart_print("Usage: memstat [map|regions|free_lists]\r\n");
     return 1;
 }

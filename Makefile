@@ -29,7 +29,7 @@ MAP = kernel.map
 LINKER = kernel.ld
 
 # Dont use glib
-OPTIONS = -DDEBUG_BUDDY # -DDEBUG_SD
+OPTIONS = # -DDEBUG_BUDDY -DDEBUG_SD
 CFLAGS = -Wall -O2 -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files

@@ -7,4 +7,6 @@ extern int ltos(long num, char *buffer, unsigned int n);
 extern int ultos(unsigned long num, char *buffer, unsigned int n);
 extern int strcmp(char *s1, char *s2);
 
+extern int atoi(const char* string, int* result);
+
 #endif // STRING_H

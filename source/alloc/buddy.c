@@ -1,5 +1,6 @@
 #include <kernel/print.h>
 #include <kernel/types.h>
+#include <kernel/panic.h>
 #include "pool.h"
 
 
@@ -60,12 +61,7 @@ static unsigned long size_to_bytes(unsigned char size) {
 }
 
 
-/*!
- * Removes the block from the 'free' linked list.
- * Should not be called outside of mark_block_allocated() and split_block().
- * @param b     The block to remove from the free collection
- */
-static void unfree_block(struct mem_blk *b) {
+static void remove_from_free_list(struct mem_blk* b) {
     // Remove from free list
     struct mem_blk *next, *prev;
     next = b->next_free;
@@ -79,55 +75,57 @@ static void unfree_block(struct mem_blk *b) {
         // Start of list
         blk_heads[BLK_HEAD_IDX(b->blk_size)] = next;
     }
-
-    /*
-    #ifdef DEBUG_BUDDY
-    uart_print("Allocated block of size ");
-    print_int(b->blk_size);
-    uart_print("\r\n");
-    #endif
-    */
 }
 
 
-/*!
- * Puts a block into the free collection. Clears the allocated flag.
- * Does not check for possible block merge operations.
- * @param b     The block to free.
- */
-static void free_block(struct mem_blk *b) {
+static void insert_into_free_list(struct mem_blk* b) {
     // Inserts block into free linked-list.
     unsigned char blk_idx = BLK_HEAD_IDX(b->blk_size);
     struct mem_blk *blk_head = blk_heads[blk_idx];
     if(blk_head) {
         blk_head->prev_free = b;
-        b->next_free = blk_head;
     }
+    b->next_free = blk_head;
+    b->prev_free = 0;
     blk_heads[blk_idx] = b;
-    b->allocated = 0;
-    /*
-    #ifdef DEBUG_BUDDY
-    uart_print("Put free block into queue at index ");
-    print_int(blk_idx);
-    uart_print("\r\n");
-    #endif
-    */
 }
 
 
-/*!
- * Mark the block as allocated and no longer available
- * @param b     The block to allocate
- */
-static void block_mark_allocated(struct mem_blk *b) {
-    unfree_block(b);
-    // Mark as allocated
-    b->allocated = 1;
+static void remove_from_all_list(struct mem_blk* b) {
+    // Remove from list containing all blocks. 
+    // Must be called when deallocating the struct
+    struct mem_blk *next, *prev;
+    next = b->next;
+    prev = b->prev;
+    if(next) {
+        next->prev = prev;
+    }
+    if(prev) {
+        prev->next = next;
+    } else {
+        // Start of list
+        blk_all_head = next;
+    }
+}
+
+
+static void insert_into_all_list(struct mem_blk* b) {
+    // Add to list containing all blocks. 
+    // Must be called when allocating the struct
+    if(blk_all_head) {
+        blk_all_head->prev = b;
+        b->next = blk_all_head;
+    }
+    blk_all_head = b;
 }
 
 
 static struct mem_blk *alloc_new_block(char size, void* addr) {
     struct mem_blk *b = pool_alloc(&buddy_pool);
+    if(!b) {
+        uart_print("Buddy: Failed to allocate block struct!\r\n");
+        return 0;
+    }
     // Initialize struct
     b->blk_size = size;
     b->allocated = 0;
@@ -136,25 +134,44 @@ static struct mem_blk *alloc_new_block(char size, void* addr) {
     b->next_free = 0;
     b->prev_free = 0;
     b->prev = 0;
-    b->next = blk_all_head;
+    b->next = 0;
     b->start_addr = addr;
     // Add block to the beginning of list of all blocks
-    blk_all_head->prev = b;
-    blk_all_head = b;
+    insert_into_all_list(b);
     // Put block into free list
-    free_block(b);
+    insert_into_free_list(b);
     return b;
 }
 
 
-static void split_block(struct mem_blk *b) {
+static int split_block(struct mem_blk *b) {
     if(b->blk_size > 0) {
         unsigned long child_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE - 1);
         b->child1 = alloc_new_block(b->blk_size - 1, b->start_addr);
         b->child2 = alloc_new_block(b->blk_size - 1, (void*)((unsigned long)b->start_addr ^ child_addr_mask));
+        // Undo allocation if one failed.
+        if(!b->child1 || !b->child2) {
+            if(b->child1) {
+                remove_from_free_list(b->child1);
+                remove_from_all_list(b->child1);
+                pool_free(&buddy_pool, b->child1);
+                b->child1 = 0;
+            } else if(b->child2) {
+                remove_from_free_list(b->child2);
+                remove_from_all_list(b->child2);
+                pool_free(&buddy_pool, b->child2);
+                b->child2 = 0;
+            }
+            return 1;
+        }
+
+        // Mark block as used. Its children are now available
+        remove_from_free_list(b);
+        return 0;
+    } else {
+        uart_print("Allocator attempted to split block of size 0.\r\n");
+        panic();
     }
-    // Mark block as used. Its children are now available
-    unfree_block(b);
 }
 
 
@@ -166,21 +183,36 @@ static void merge_blocks(struct mem_blk *b) {
     if(b->blk_size >= MAX_MEM_BLK_SIZE) {
         return;
     }
-    uint64_t parent_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE - 1);
+    uint64_t parent_addr_mask = 1 << (b->blk_size + MEM_BLK_ATOM_SIZE);
     void *parent_addr = (void*)((uint64_t)b->start_addr & ~parent_addr_mask);
     struct mem_blk *i = blk_all_head;
     while(i) {
         if(i->start_addr == parent_addr && i->blk_size == b->blk_size + 1) {
+            /* The other child block is not free. Don't merge. */
+            if (i->child1->allocated || i->child2->allocated) {
+                return;
+            }
+            /* The other child block is split. Don't merge. */
+            if (i->child1->child1 || i->child2->child1) {
+                return;
+            }
             // We found our parent block
+            remove_from_free_list(i->child1);
+            remove_from_all_list(i->child1);
             pool_free(&buddy_pool, i->child1);
             i->child1 = 0;
+            remove_from_free_list(i->child2);
+            remove_from_all_list(i->child2);
             pool_free(&buddy_pool, i->child2);
             i->child2 = 0;
-            free_block(i);
+
+            insert_into_free_list(i);
             merge_blocks(i);
+            return;
         }
         i = i->next;
     }
+    uart_print("Buddy: Tried to merge invalid block!\r\n");
 }
 
 
@@ -198,7 +230,10 @@ static int buddy_reserve_block(void* addr, int size) {
     }
     while(b->blk_size > size) {
         if(!b->child1) {
-            split_block(b);
+            if(split_block(b)) {
+                // Failed to split block
+                return 1;
+            }
         }
 
         if(b->child1->start_addr == addr && !b->child1->allocated) {
@@ -210,42 +245,57 @@ static int buddy_reserve_block(void* addr, int size) {
         }
     }
     // Block of right size at right address located
-    block_mark_allocated(b);
+    remove_from_free_list(b);
+    b->allocated = 1;
     return 0;
 }
 
 
 // Block size is 2^size * min_size
 static struct mem_blk *next_free_block(int size) {
-    struct mem_blk *freeb = 0;
-    int i = size;
-    // Look for free blocks of the specified size
-    while(i <= MAX_MEM_BLK_SIZE) {
-        if(blk_heads[BLK_HEAD_IDX(i)]) {
-            freeb = blk_heads[BLK_HEAD_IDX(i)];
-            break;
-        }
-        i++;
+    if(size > MAX_MEM_BLK_SIZE || size < 0) {
+        return 0;
     }
-
-    if(freeb && i == size) {
+    struct mem_blk *freeb = blk_heads[BLK_HEAD_IDX(size)];
+    if(freeb) {
         // A free block was found
         // Make sure to mark the block as used now
+
+        // Perform sanity check
+        #ifdef DEBUG_BUDDY
+        if(size != freeb->blk_size) {
+            uart_print("Unexpected block in free head array!\r\n");
+            print_int(freeb->blk_size);
+            uart_print(" != ");
+            print_int(size);
+            uart_print("\r\n");
+            panic();
+        }
+        #endif
+
         return freeb;
     } else {
         // A free block was not found. Search for larger blocks
+        // Get the next_free free block of greater size
+        freeb = next_free_block(size + 1);
         if(!freeb) {
-            // Uh oh, there are not even free blocks to split!
-            uart_print("Error: next_free_block: Out of memory!\r\n");
+            //uart_print("Error: next_free_block: Out of memory!\r\n");
             return 0;
-        } else {
-            // Get the next_free free block of greater size
-            freeb = next_free_block(size + 1);
-            // Split block into two smaller blocks
-            split_block(freeb);
-            // Arbitrarily use the first child
-            return freeb->child1;
         }
+
+        // Split block into two smaller blocks
+        #ifdef DEBUG_BUDDY
+        uart_print("Splitting block with address ");
+        print_address(freeb->start_addr);
+        uart_print("\r\n");
+        #endif
+
+        if(split_block(freeb)) {
+            // Failed to split block.
+            return 0;
+        }
+        // Arbitrarily use the first child
+        return freeb->child1;
     }
 }
 
@@ -256,7 +306,12 @@ void* kmalloc(unsigned long size) {
         i++;
     }
     struct mem_blk *b = next_free_block(i);
-    block_mark_allocated(b);
+    if(b == 0) {
+        // A block was not found
+        return 0;
+    }
+    remove_from_free_list(b);
+    b->allocated = 1;
     
     #ifdef DEBUG_BUDDY
     uart_print("Found free ");
@@ -264,7 +319,7 @@ void* kmalloc(unsigned long size) {
     uart_print(" byte block (level: ");
     print_int(i);
     uart_print(") at addr ");
-    print_ulong((unsigned long)b->start_addr);
+    print_address(b->start_addr);
     uart_print("\r\n");
     #endif
 
@@ -276,7 +331,8 @@ void free(void* memory) {
     struct mem_blk *b = blk_all_head;
     while(b) {
         if(b->start_addr == memory && b->allocated) {
-            free_block(b);
+            b->allocated = 0;
+            insert_into_free_list(b);
             merge_blocks(b);
             return;
         }
@@ -294,7 +350,7 @@ int init_buddy_allocator() {
 
     // Figure out heap limits
     uint64_t max_blk_mask = size_to_bytes(MAX_MEM_BLK_SIZE) - 1;
-    heap_end = (void*)((0x01000000ul + max_blk_mask) & ~max_blk_mask);
+    heap_end = (void*)((0x00400000ul + max_blk_mask) & ~max_blk_mask);
     void* heap_min_limit = (void*)(((uint64_t)__static_memory_end + max_blk_mask) & ~max_blk_mask);
     if(heap_end < heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
         uart_print("Failed to allocate buddy blocks: Insufficient memory!\r\n");
@@ -308,6 +364,21 @@ int init_buddy_allocator() {
     buddy_pool = pool_create_pool_using_memory(sizeof(struct mem_blk),
         MEM_BLK_BYTES(INITIAL_POOL_SIZE),
         heap_min_limit);
+
+    // The first block is used to kickstart the pool allocator
+    if(!alloc_new_block(MAX_MEM_BLK_SIZE, (void*)heap_min_limit)) {
+        return 1;
+    }
+    // Reserve the block we gave to the memory pool
+    if(buddy_reserve_block(heap_min_limit, INITIAL_POOL_SIZE)) {
+        uart_print("Failed to reserve buddy block for early pool allocator.\r\n");
+        return 1;
+    }
+    // Mark this first page's address as the beginning of our heap
+    heap_start = (void*)(heap_min_limit);
+    // Do not reallocate the first page, which we created manually.
+    heap_min_limit += size_to_bytes(MAX_MEM_BLK_SIZE);
+
     // Iterate over memory region and fill with blocks.
     uint64_t block_p = (uint64_t)heap_end;
     while(block_p >= (uint64_t)heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
@@ -315,13 +386,6 @@ int init_buddy_allocator() {
         if(!alloc_new_block(MAX_MEM_BLK_SIZE, (void*)block_p)) {
             return 1;
         }
-    }
-    heap_start = (void*)(block_p);
-
-    // Reserve the block we gave to the memory pool
-    if(buddy_reserve_block(heap_min_limit, INITIAL_POOL_SIZE)) {
-        uart_print("Failed to reserve buddy block for early pool allocator.\r\n");
-        return 1;
     }
 
     return 0;
@@ -361,7 +425,7 @@ unsigned int buddy_used_block_structs() {
 }
 
 
-static void print_block(struct mem_blk *b, char start_depth) {
+static void print_block_tree(struct mem_blk *b, char start_depth) {
     term_set_cursor_column((start_depth - b->blk_size) * 2 + 1);
     print_hex_uint32((uint64_t)b->start_addr);
     uart_print(" - ");
@@ -373,19 +437,56 @@ static void print_block(struct mem_blk *b, char start_depth) {
     uart_print("\r\n");
     if(b->child1 || b->child2) {
         // Block is split
-        print_block(b->child1, start_depth);
-        print_block(b->child2, start_depth);
+        print_block_tree(b->child1, start_depth);
+        print_block_tree(b->child2, start_depth);
     } else {
         // Block is not split
     }
 }
 
+static void print_block(struct mem_blk *b) {
+    uart_print("Block(size=");
+    print_int(b->blk_size);
+    uart_print(",alloc=");
+    print_int(b->allocated);
+    if(b->child1 || b->child2) {
+        uart_print(",children=1");
+    } else {
+        uart_print(",children=0");
+    }
+    uart_print(",addr=");
+    print_address(b->start_addr);
+    uart_print(")\r\n");
+}
+
+int monoterm_buddy_print_free_lists(int argc, char* argv[]) {
+    if(argc != 3) {
+        uart_print("Requires block size argument.\r\n");
+        return 1;
+    }
+    int blk_size;
+    if(atoi(argv[2], &blk_size)) {
+        uart_print("Invalid block size.\r\n");
+        return 1;
+    }
+    if(blk_size < 0 || blk_size > MAX_MEM_BLK_SIZE) {
+        uart_print("Invlid block size.\r\n");
+        return 1;
+    }
+
+    struct mem_blk *b = blk_heads[BLK_HEAD_IDX(blk_size)];
+    while(b) {
+        print_block(b);
+        b = b->next_free;
+    }
+    return 0;
+}
 
 int monoterm_buddy_print_map(int argc, char* argv[]) {
     struct mem_blk *b = blk_all_head;
     while(b) {
         if(b->blk_size == MAX_MEM_BLK_SIZE) {
-            print_block(b, b->blk_size);
+            print_block_tree(b, b->blk_size);
         }
         b = b->next;
     }

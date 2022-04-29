@@ -1,17 +1,13 @@
-#include <kernel/mem.h>
 #include <kernel/version.h>
 #include <kernel/delay.h>
+#include <kernel/panic.h>
+
 
 #include "alloc/buddy.h"
 #include "uart.h"
 #include "monoterm/term.h"
 #include "fs/fat32.h"
 #include "disk/sd.h"
-
-_Noreturn void panic() {
-    uart_print("### KERNEL PANIC ###\r\n");
-    while(1);
-}
 
 
 void kernel_entry_point(void) {

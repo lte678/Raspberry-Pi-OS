@@ -1,4 +1,6 @@
 #include <kernel/string.h>
+#include <kernel/types.h>
+
 #include "uart.h"
 
 
@@ -93,7 +95,7 @@ void print_ulong(unsigned long number) {
     uart_print("ERR");
 }
 
-void print_hex(unsigned char* bytes, unsigned short n) {
+void print_hex(const unsigned char* bytes, unsigned short n) {
     char buff[3];
     int i;
 
@@ -106,6 +108,20 @@ void print_hex(unsigned char* bytes, unsigned short n) {
     }
 }
 
+void print_hex_be(const unsigned char* bytes, unsigned short n) {
+    char buff[3];
+    int i;
+
+    buff[2] = 0;
+    for(i = n - 1; i >= 0; i--) {
+        // Note: Upper means upper bits, and upper case in this situation
+        buff[0] = hex_char_upper((bytes[i] & 0xF0) >> 4);
+        buff[1] = hex_char_upper(bytes[i] & 0x0F);
+        uart_print(buff);
+    }
+}
+
+
 void print_hex_uint32(unsigned int num) {
     // This is the big endian ordered version of num
     unsigned char repr[] = {num >> 24,
@@ -116,6 +132,12 @@ void print_hex_uint32(unsigned int num) {
     print_hex(repr, 4);
 }
 
+
+void print_address(void* addr) {
+    uart_print("0x");
+    uint64_t addr_int = (uint64_t)addr;
+    print_hex_be((unsigned char*)&addr_int, 8);
+}
 
 // Terminal control commands
 
