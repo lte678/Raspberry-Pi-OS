@@ -1,7 +1,7 @@
-#ifndef REGISTER_H
-#define REGISTER_H
+#pragma once
+#include <kernel/types.h>
 
-extern void put32(unsigned int addr, unsigned int data);
-extern unsigned int get32(unsigned int addr);
+#define read_system_reg(reg) ({ uint32_t ret; __asm__ ("mrs %0, " #reg ";" : "=r"(ret) : : ); ret; })
 
-#endif  // REGISTER_H
+extern void put32(uint64_t addr, uint32_t data);
+extern uint32_t get32(uint64_t addr);

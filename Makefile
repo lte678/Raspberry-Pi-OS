@@ -37,11 +37,11 @@ FOLDERS := fs disk monoterm alloc
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.
-AS_SOURCES := $(wildcard $(SOURCE)*.s)
+AS_SOURCES := $(wildcard $(SOURCE)*.S)
 C_SOURCES := $(wildcard $(SOURCE)*.c)
-AS_SOURCES += $(foreach F, $(FOLDERS), $(wildcard $(SOURCE)$(F)/*.s))
+AS_SOURCES += $(foreach F, $(FOLDERS), $(wildcard $(SOURCE)$(F)/*.S))
 C_SOURCES += $(foreach F, $(FOLDERS), $(wildcard $(SOURCE)$(F)/*.c))
-AS_OBJECTS := $(patsubst $(SOURCE)%.s, $(BUILD)%.o, $(AS_SOURCES))
+AS_OBJECTS := $(patsubst $(SOURCE)%.S, $(BUILD)%.o, $(AS_SOURCES))
 C_OBJECTS := $(patsubst $(SOURCE)%.c, $(BUILD)%.o, $(C_SOURCES))
 
 OBJECTS += $(C_OBJECTS)
@@ -70,12 +70,12 @@ $(BUILD)output.elf : $(OBJECTS) $(LINKER)
 # MAKE OBJECT FILES
 # c files
 # -c option leaves linking for later
-$(C_OBJECTS): $(C_SOURCES) $(BUILD_FOLDERS)
-	$(ARMGNU)-gcc $(CFLAGS) -I $(SOURCE) -I include/ -c $(patsubst $(BUILD)%.o, $(SOURCE)%.c, $@) -o $@
+$(BUILD)%.o: $(SOURCE)%.c $(BUILD_FOLDERS)
+	$(ARMGNU)-gcc $(CFLAGS) -I $(SOURCE) -I include/ -c $< -o $@
 
 # s files
-$(AS_OBJECTS): $(AS_SOURCES) $(BUILD)
-	$(ARMGNU)-as $< -o $@
+$(BUILD)%.o: $(SOURCE)%.S $(BUILD_FOLDERS)
+	$(ARMGNU)-gcc -I include/ -c $< -o $@ 
 
 # Create rule for making build folders
 $(BUILD_FOLDERS):

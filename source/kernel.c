@@ -1,5 +1,7 @@
 #include <kernel/version.h>
 #include <kernel/delay.h>
+#include <kernel/exception.h>
+#include <kernel/timer.h>
 #include <kernel/panic.h>
 
 
@@ -10,12 +12,24 @@
 #include "disk/sd.h"
 
 
+void print_execution_level() {
+    uint32_t execution_level = read_system_reg(CurrentEL) >> 2;
+    uart_print("Executing in EL");
+    print_uint(execution_level);
+    uart_print("\r\n");
+}
+
 void kernel_entry_point(void) {
     //struct bios_parameter_block bpb;
     char ver_str[8];
+    uint64_t time;
     
-    wait_usec(1500000);
+    wait_usec(3000000);
 
+    irq_init();
+    enable_system_timer_interrupt();
+    time = read_system_timer();
+    set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
     uart_init();
     uart_print("Booting LXE...\r\n");
     uart_print("Developed by Leon Teichroeb :)\r\n");
@@ -26,6 +40,7 @@ void kernel_entry_point(void) {
         uart_print(ver_str);
         uart_print("\r\n");
     }
+    print_execution_level();
 
     // FAT32 shit
     // bpb = (const struct bios_parameter_block){0};

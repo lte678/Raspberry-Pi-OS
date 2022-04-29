@@ -1,3 +1,4 @@
+#include "init_sysregs.h"
 
 .section .init
 .globl _start
@@ -9,26 +10,27 @@ _start:
     b hang
 
 master:
+	ldr	x0, =SCTLR_VALUE_MMU_DISABLED
+	msr	sctlr_el1, x0		
+
+	ldr	x0, =HCR_VALUE
+	msr	hcr_el2, x0
+	
+	ldr x0, =SPSR_VALUE
+    msr spsr_el2, x0
+
+	adr	x0, el1_entry		
+	msr	elr_el2, x0
+
+	eret				
+
+el1_entry:
     ldr x0, =__sp
     mov sp, x0
-    bl skip
-skip:
-    mov x0,x30
     bl zero_bss
     bl kernel_entry_point
 
 hang: b hang
-
-// TODO: Remove
-.globl PUT32
-PUT32:
-  str w1,[x0]
-  ret
-
-.globl GET32
-GET32:
-    ldr w0,[x0]
-    ret
 
 .globl dummy
 dummy:

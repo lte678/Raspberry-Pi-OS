@@ -1,7 +1,9 @@
-void put32(unsigned int addr, unsigned int data) {
-    *((unsigned int*)(unsigned long int)addr) = data; 
+#include <kernel/types.h>
+
+void put32(uint64_t addr, uint32_t data) {
+    *((uint32_t*)addr) = data; 
 }
 
-unsigned int get32(unsigned int addr) {
-    return *((unsigned int*)(unsigned long int)addr); 
+uint32_t get32(uint64_t addr) {
+    return *((uint32_t*)addr); 
 }
