@@ -3,7 +3,7 @@
 #include <kernel/exception.h>
 
 
-#define TIMER_BASE 0x3F000000
+#define TIMER_BASE 0x3F003000
 
 #define TIMER_CS  (TIMER_BASE + 0x00)
 #define TIMER_CLO (TIMER_BASE + 0x04)
