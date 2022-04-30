@@ -3,6 +3,8 @@
 
 #include "uart.h"
 
+#define get_byte(field, offset) (field & (0xfful << (offset * 8ul))) >> (offset * 8ul)
+
 
 static char hex_char_upper(unsigned char c) {
     switch(c) {
@@ -124,14 +126,31 @@ void print_hex_be(const unsigned char* bytes, unsigned short n) {
 
 void print_hex_uint32(unsigned int num) {
     // This is the big endian ordered version of num
-    unsigned char repr[] = {num >> 24,
-        (num & 0xFF0000) >> 16,
-        (num & 0xFF00) >> 8,
-        num & 0xFF};
+    unsigned char repr[] = {
+        get_byte(num, 3),
+        get_byte(num, 2),
+        get_byte(num, 1),
+        get_byte(num, 0)
+    };
 
     print_hex(repr, 4);
 }
 
+void print_hex_uint64(uint64_t num) {
+    // This is the big endian ordered version of num
+    unsigned char repr[] = {
+        get_byte(num, 7),
+        get_byte(num, 6),
+        get_byte(num, 5),
+        get_byte(num, 4),
+        get_byte(num, 3),
+        get_byte(num, 2),
+        get_byte(num, 1),
+        get_byte(num, 0)
+    };
+
+    print_hex(repr, 8);
+}
 
 void print_address(void* addr) {
     uart_print("0x");

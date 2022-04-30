@@ -27,7 +27,7 @@ void kernel_entry_point(void) {
     wait_usec(3000000);
 
     irq_init();
-    enable_system_timer_interrupt();
+    // enable_system_timer_interrupt();
     time = read_system_timer();
     set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
     uart_init();
@@ -55,6 +55,7 @@ void kernel_entry_point(void) {
         panic();
     }
     sd_initialize();
+
     // Start monolithic kernel console
     monoterm_start();
 }

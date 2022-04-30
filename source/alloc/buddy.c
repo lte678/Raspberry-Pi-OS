@@ -6,13 +6,13 @@
 
 // TODO: Hashing based on max-sized block address, to reduce free-lookups to O(1) complexity
 
-#define MAX_MEM_BLK_SIZE 11
+#define MAX_MEM_BLK_SIZE 13
 // Allocate at least 512 bytes at once
 #define MEM_BLK_ATOM_SIZE 9
 #define MIN_BLK_BYTES (1 << MEM_BLK_ATOM_SIZE)
 #define MEM_BLK_BYTES(size) (1 << (MEM_BLK_ATOM_SIZE + size))
 
-#define INITIAL_POOL_SIZE 6
+#define INITIAL_POOL_SIZE 8
 
 #define BLK_HEAD_IDX(x) (MAX_MEM_BLK_SIZE - x)
 

@@ -5,6 +5,13 @@
 	b	\label
 	.endm
 
+.macro	kernel_call	label
+	# 2^7 = 128 Byte alignment
+    kernel_entry
+	bl	\label
+	kernel_exit
+	.endm
+
 
 .macro	kernel_entry
 	sub	sp, sp, 256
@@ -55,31 +62,45 @@
 .align	11
 .globl vectors
 vectors:
-    ventry	_handle_exception			// Synchronous EL1t
-	ventry	_handle_exception			// IRQ EL1t
-	ventry	_handle_exception			// FIQ EL1t
-	ventry	_handle_exception			// Error EL1t
+	# ???
+    ventry	_handle_unknown_exception			// Synchronous EL1t
+	ventry	_handle_unknown_exception			// IRQ EL1t
+	ventry	_handle_unknown_exception			// FIQ EL1t
+	ventry	_handle_unknown_exception			// Error EL1t
 
-	ventry	_handle_exception			// Synchronous EL1h
-	ventry	_handle_exception			// IRQ EL1h
-	ventry	_handle_exception			// FIQ EL1h
-	ventry	_handle_exception			// Error EL1h
+	# From current EL
+	ventry	_handle_sync						// Synchronous EL1h
+	ventry	_handle_irq							// IRQ EL1h
+	ventry	_handle_fiq							// FIQ EL1h
+	ventry	_handle_serror						// Error EL1h
 
-	ventry	_handle_exception			// Synchronous 64-bit EL0
-	ventry	_handle_exception			// IRQ 64-bit EL0
-	ventry	_handle_exception			// FIQ 64-bit EL0
-	ventry	_handle_exception			// Error 64-bit EL0
+	# From lower EL (64-bit)
+	ventry	_handle_unknown_exception			// Synchronous 64-bit EL0
+	ventry	_handle_unknown_exception			// IRQ 64-bit EL0
+	ventry	_handle_unknown_exception			// FIQ 64-bit EL0
+	ventry	_handle_unknown_exception			// Error 64-bit EL0
 
-	ventry	_handle_exception			// Synchronous 32-bit EL0
-	ventry	_handle_exception			// IRQ 32-bit EL0
-	ventry	_handle_exception			// FIQ 32-bit EL0
-	ventry	_handle_exception			// Error 32-bit EL0
+	# From lower EL (32-bit)
+	ventry	_handle_unknown_exception			// Synchronous 32-bit EL0
+	ventry	_handle_unknown_exception			// IRQ 32-bit EL0
+	ventry	_handle_unknown_exception			// FIQ 32-bit EL0
+	ventry	_handle_unknown_exception			// Error 32-bit EL0
 
 
-_handle_exception:
-	kernel_entry
-	bl handle_exception
-	kernel_exit
+_handle_sync:
+	kernel_call handle_exception_sync
+
+_handle_irq:
+	kernel_call handle_exception_irq
+
+_handle_fiq:
+	kernel_call handle_exception_fiq
+
+_handle_serror:
+	kernel_call handle_exception_serror
+
+_handle_unknown_exception:
+	kernel_call handle_unknown_exception
 
 .globl irq_init
 irq_init:

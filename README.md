@@ -23,3 +23,5 @@ _Hello recruiters ^^_
 ## Todo
 
 - Virtual memory
+- Virtual file system
+- `printf`
