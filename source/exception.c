@@ -13,11 +13,36 @@
 #define INT_DISABLE_IRQS_1 (INT_BASE + 0x21C)
 #define INT_DISABLE_IRQS_2 (INT_BASE + 0x220)
 
+#define PSTATE_DEBUG_INT_MASK (0b1000ul << 6)
+#define PSTATE_SERROR_INT_MASK (0b0100ul << 6)
+#define PSTATE_IRQ_INT_MASK (0b0010ul << 6)
+#define PSTATE_FIQ_INT_MASK (0b0001ul << 6)
 
 #define TIMER_BASE 0x3F003000
 
 #define TIMER_CS  (TIMER_BASE + 0x00)
 
+extern int vectors;
+
+
+void unmask_exception_class(uint64_t mask) {
+	// Debug, system error, irq, fiq mask bits 
+	uint64_t daif = read_system_reg(DAIF);
+	daif &= ~PSTATE_IRQ_INT_MASK;
+	write_system_reg(DAIF, daif);
+}
+
+void mask_exception_class(uint64_t mask) {
+	// Debug, system error, irq, fiq mask bits 
+	uint64_t daif = read_system_reg(DAIF);
+	daif |= PSTATE_IRQ_INT_MASK;
+	write_system_reg(DAIF, daif);
+}
+
+void init_exceptions() {
+    write_system_reg(VBAR_EL1, (uint64_t)&vectors);
+    unmask_exception_class(PSTATE_IRQ_INT_MASK);
+}
 
 static void print_esr_and_far(uint64_t esr, uint64_t far, unsigned int error_class) {
 	// Exception link register (fault address)

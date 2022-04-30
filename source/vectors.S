@@ -101,10 +101,3 @@ _handle_serror:
 
 _handle_unknown_exception:
 	kernel_call handle_unknown_exception
-
-.globl irq_init
-irq_init:
-    adr x0, vectors
-    msr vbar_el1, x0
-    msr daifclr, #2 
-    ret

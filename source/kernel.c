@@ -26,10 +26,13 @@ void kernel_entry_point(void) {
     
     wait_usec(3000000);
 
-    irq_init();
-    // enable_system_timer_interrupt();
+    // Exceptions
+    init_exceptions();
+    enable_system_timer_interrupt();
     time = read_system_timer();
     set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
+
+    // Uart
     uart_init();
     uart_print("Booting LXE...\r\n");
     uart_print("Developed by Leon Teichroeb :)\r\n");
