@@ -5,3 +5,6 @@ build/
 kernel.img
 kernel.map
 kernel.list
+
+.idea/
+.vscode/
