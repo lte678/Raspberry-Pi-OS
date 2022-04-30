@@ -24,6 +24,7 @@ master:
 
 	eret				
 
+.globl el1_entry
 el1_entry:
     ldr x0, =__sp
     mov sp, x0
