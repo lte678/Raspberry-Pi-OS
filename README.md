@@ -18,10 +18,10 @@ _Hello recruiters ^^_
 - Buddy block allocator
 - Interrupt handling (WIP)
 - Platform timer (WIP)
+- Virtual memory (WIP)
 - Lots, and lots, and lots of bugs
 
 ## Todo
 
-- Virtual memory
 - Virtual file system
 - `printf`
