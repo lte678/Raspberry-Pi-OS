@@ -1,5 +1,6 @@
 #include <kernel/print.h>
 #include <kernel/types.h>
+#include <kernel/page.h>
 #include <kernel/panic.h>
 #include "pool.h"
 
@@ -350,7 +351,10 @@ int init_buddy_allocator() {
 
     // Figure out heap limits
     uint64_t max_blk_mask = size_to_bytes(MAX_MEM_BLK_SIZE) - 1;
-    heap_end = (void*)((0x40000000ul + max_blk_mask) & ~max_blk_mask);
+    // Round down heap end to next increment of MAX_MEM_BLK_SIZE
+    uint64_t memory_end = 0x40000000ul + VA_OFFSET;
+    heap_end = (void*)(memory_end & ~max_blk_mask);
+    // Round up heap start to next increment of MAX_MEM_BLK_SIZE
     void* heap_min_limit = (void*)(((uint64_t)__static_memory_end + max_blk_mask) & ~max_blk_mask);
     if(heap_end < heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
         uart_print("Failed to allocate buddy blocks: Insufficient memory!\r\n");

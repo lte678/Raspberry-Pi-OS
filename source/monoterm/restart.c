@@ -3,10 +3,10 @@
 
 extern void el1_entry();
 
-
+// LEGACY: Non-functional in recent versions
 int monoterm_restart(int argc, char *argv[]) {
     uart_print("Restarting...\r\n");
-    // TODO: Wrap this up in a neat kernel function
+    // Simple jump doens't work anymore, due to virtual memory etc...
     el1_entry();
     // This return should never be called...
     return 0;

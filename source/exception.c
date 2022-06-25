@@ -76,7 +76,12 @@ void handle_exception_sync()
 	uint64_t far = read_system_reg(FAR_EL1);
 	unsigned int error_class = (esr & (0b111111 << 26)) >> 26;
 
+	uart_print("## SYNC EXCEPTION ##\r\n");
 	switch(error_class) {
+	case 7:
+		uart_print("Invalid vector instruction.\r\n");
+		print_esr_and_far(esr, far, error_class);
+		panic();
 	case 37:
 		// 0b100101: Data Abort taken without change in exception level.
 		uart_print("Invalid memory access from kernel!\r\n");
@@ -84,7 +89,7 @@ void handle_exception_sync()
 		panic();
 		break;
 	default:
-		uart_print("## SYNC EXCEPTION ##\r\n");	
+		uart_print("Unidentified exception.\r\n");	
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	}

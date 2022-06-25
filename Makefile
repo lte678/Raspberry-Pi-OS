@@ -30,10 +30,11 @@ LINKER = kernel.ld
 
 # Dont use glib
 OPTIONS = # -DDEBUG_BUDDY -DDEBUG_SD
-CFLAGS = -Wall -O2 -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
+CFLAGS = -mgeneral-regs-only \
+	-Wall -Og -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files
-FOLDERS := fs disk monoterm alloc
+FOLDERS := fs disk monoterm alloc memory
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.
@@ -65,7 +66,7 @@ $(TARGET) : $(BUILD)output.elf
 
 # Rule to make the elf file.
 $(BUILD)output.elf : $(OBJECTS) $(LINKER)
-	$(ARMGNU)-ld --no-undefined $(OBJECTS) -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
+	$(ARMGNU)-gcc $(CFLAGS) -Wl,--no-undefined $(OBJECTS) -Xlinker -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
 
 # MAKE OBJECT FILES
 # c files
@@ -91,6 +92,12 @@ asm:
 run:
 	qemu-system-aarch64 -M raspi3b \
 		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
+		-kernel kernel.img -drive file=test.img,if=sd,format=raw
+
+debug:
+	qemu-system-aarch64 -M raspi3b \
+		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
+		-S -gdb tcp::9000 \
 		-kernel kernel.img -drive file=test.img,if=sd,format=raw
 
 # Rule to clean files.

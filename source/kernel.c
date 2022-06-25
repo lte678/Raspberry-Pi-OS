@@ -29,8 +29,8 @@ void kernel_entry_point(void) {
     // Exceptions
     init_exceptions();
     enable_system_timer_interrupt();
-    time = read_system_timer();
-    set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
+    //time = read_system_timer();
+    //set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
 
     // Uart
     uart_init();

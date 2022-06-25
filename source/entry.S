@@ -26,8 +26,9 @@ master:
 
 .globl el1_entry
 el1_entry:
-    ldr x0, =__sp
+    ldr x0, =0x80000
     mov sp, x0
+    bl mmu_enable
     bl zero_bss
     bl kernel_entry_point
 

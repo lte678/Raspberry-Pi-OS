@@ -1,0 +1,6 @@
+#pragma once
+
+
+#define VA_OFFSET 0x0000800000000000
+#define PAGE_SIZE 4096
+#define PAGE_TABLE_ENTRIES 512
