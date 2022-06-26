@@ -104,6 +104,17 @@ int strcmp(char *s1, char *s2) {
     return 0;
 }
 
+void strncpy(char *dest, char *src, unsigned int n) {
+    unsigned int i = 0;
+    while(i < n) {
+        *dest = *src;
+        if(!(*src)) {
+            return;
+        }
+        dest++;
+        src++;
+    }
+}
 
 int atoi(const char* string, int* result) {
     // First find end of string, so we can work backwards

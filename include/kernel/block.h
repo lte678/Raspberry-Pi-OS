@@ -1,3 +1,8 @@
+#pragma once
+
+#include <kernel/mem.h>
+#include <kernel/alloc.h>
+
 /*
 * Block devices model hardware that supports block-based reads.
 * This includes devices such as SD cards and hard drives.
@@ -10,20 +15,23 @@
 */
 
 struct block_dev {
-    int iblk;  // Block index
+    unsigned int iblk;  // Block index
     int block_size;  // Size of blocks in bytes
     // Block dev interface
-    int (*read_blk)(unsigned int blk, void *buf);
-    int (*read_blks)(unsigned int blk, int n, void *buf);
-    int (*write_blk)(unsigned int blk, void *buf);
-    int (*write_blks)(unsigned int blk, int n, void *buf);
+    int (*read_blk)(struct block_dev *dev, void *buf);
+    int (*read_blks)(struct block_dev *dev, int n, void *buf);
+    int (*write_blk)(struct block_dev *dev, void *buf);
+    int (*write_blks)(struct block_dev *dev, int n, void *buf);
+    int (*seek_blk)(struct block_dev *dev, unsigned int iblk);
 
     // Utility data:
     char driver_str[16];
 };
 
-/* Allocates and registers a new block device */
-// struct block_dev *alloc_block_dev() {
-//    struct block_dev *dev = malloc(sizeof(struct block_dev));
-//    return dev;
-//}
+struct block_dev *alloc_block_dev();
+
+int read_blk(struct block_dev *dev, void *buf);
+int read_blks(struct block_dev *dev, int n, void *buf);
+int write_blk(struct block_dev *dev, void *buf);
+int write_blks(struct block_dev *dev, int n, void *buf);
+int seek_blk(struct block_dev *dev, unsigned int iblk);

@@ -3,6 +3,8 @@
 #include <kernel/exception.h>
 #include <kernel/timer.h>
 #include <kernel/panic.h>
+#include <kernel/block.h>
+#include <kernel/alloc.h>
 
 
 #include "alloc/buddy.h"
@@ -22,7 +24,7 @@ void print_execution_level() {
 void kernel_entry_point(void) {
     //struct bios_parameter_block bpb;
     char ver_str[8];
-    uint64_t time;
+    //uint64_t time;
     
     wait_usec(3000000);
 
@@ -57,7 +59,22 @@ void kernel_entry_point(void) {
     if(init_buddy_allocator()) {
         panic();
     }
-    sd_initialize();
+
+    struct block_dev *primary_sd = alloc_block_dev();
+    if(sd_initialize(primary_sd)) {
+        uart_print("SD device is required to mount root directory!\r\n");
+        panic();
+    }
+    struct fat32_disk *root_part = init_fat32_disk(primary_sd);
+    if(!root_part) {
+        uart_print("Failed to load root partition!\r\n");
+        panic();
+    }
+    //print_bpb(root_part->bpb);
+    //for(int i = 0; i < 10; i++) {
+    //    print_hex_uint32(root_part->fat[i]);
+    //    uart_print("\r\n");
+    //}
 
     // Start monolithic kernel console
     monoterm_start();

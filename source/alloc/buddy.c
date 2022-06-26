@@ -2,6 +2,8 @@
 #include <kernel/types.h>
 #include <kernel/page.h>
 #include <kernel/panic.h>
+#include <kernel/alloc.h>
+#include <kernel/mem.h>
 #include "pool.h"
 
 
@@ -301,7 +303,7 @@ static struct mem_blk *next_free_block(int size) {
 }
 
 
-void* kmalloc(unsigned long size) {
+void* kmalloc(unsigned long size, uint32_t flags) {
     int i = 0;
     while(size_to_bytes(i) < size) {
         i++;
@@ -323,6 +325,11 @@ void* kmalloc(unsigned long size) {
     print_address(b->start_addr);
     uart_print("\r\n");
     #endif
+
+    // Zero region if flag is set
+    if(flags & ALLOC_ZERO_INIT) {
+        memset(0, b->start_addr, size);
+    }
 
     return b->start_addr;
 }

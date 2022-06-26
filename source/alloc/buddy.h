@@ -1,11 +1,7 @@
 #ifndef BUDDY_H
 #define BUDDY_H
 
-
 int init_buddy_allocator();
-
-void* kmalloc(unsigned long size);
-void free(void* memory);
 
 unsigned long memory_allocated();
 unsigned int buddy_free_block_structs();

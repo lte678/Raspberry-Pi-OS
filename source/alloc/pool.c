@@ -8,7 +8,7 @@ static void pool_allocate_new_block(struct memory_pool *p, void* new_block) {
     /* Create a new block of objects and prepend them to the 'free' linked list. */
     if(!new_block) {
         p->no_new_block = 1;
-        new_block = kmalloc(p->block_size * p->object_size);
+        new_block = kmalloc(p->block_size * p->object_size, 0);
         p->no_new_block = 0;
         if(!new_block) {
             return;

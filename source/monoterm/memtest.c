@@ -21,7 +21,7 @@ int static test_create_and_free(int argc, char *argv[]) {
     }
 
     uart_print("Allocating pointers...\r\n");
-    void** pointers = (void**)kmalloc(sizeof(void*) * number_blocks);
+    void** pointers = (void**)kmalloc(sizeof(void*) * number_blocks, 0);
     if(!pointers) {
         uart_print("Failed to allocate memory for pointers.\r\n");
         return 1;
@@ -29,7 +29,7 @@ int static test_create_and_free(int argc, char *argv[]) {
 
     uart_print("Allocating memory blocks...\r\n");
     for(int i = 0; i < number_blocks; i++) {
-        pointers[i] = kmalloc(block_size);
+        pointers[i] = kmalloc(block_size, 0);
         if(pointers[i] == 0) {
             uart_print("Alloc. failed for block ");
             print_int(i);

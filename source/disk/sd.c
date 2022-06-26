@@ -2,6 +2,8 @@
 #include <kernel/print.h>
 #include <kernel/types.h>
 #include <kernel/delay.h>
+#include <kernel/string.h>
+#include <kernel/block.h>
 
 #define SDEMMC_BASE 0x3F300000
 
@@ -464,7 +466,7 @@ static int sd_exec_acmd41(unsigned int *resp) {
     return 0;
 }
 
-static int sd_exec_cmd17() {
+static int sd_exec_cmd17(uint32_t block) {
     // Read one block of data from the SD card
     put32(SDEMMC_BLKSIZECNT, (1 << 16) | 512);
 
@@ -479,7 +481,7 @@ static int sd_exec_cmd17() {
     cmd.crc_check_en = 0;
     cmd.response_type = 0x02;
     
-    if((ret = sd_exec_cmd(cmd, 0x00, &resp))) {
+    if((ret = sd_exec_cmd(cmd, block, &resp))) {
         #ifdef DEBUG_SD
         uart_print("SD card error during CMD17\r\n");
         #endif /* DEBUG_SD */
@@ -622,31 +624,41 @@ static int sd_reset() {
     return 0;
 }
 
-int sd_initialize() {
+static int sd_read_blk(struct block_dev *dev, void *buf) {
+    // struct sd_cid cid = sd_get_cid();
+    // print_cid(&cid);
+
+    if(sd_exec_cmd17(dev->iblk * dev->block_size)) {
+        return -1;
+    }
+    int i = 0;
+    unsigned int *buf2 = (unsigned int*)buf;
+    while(get32(SDEMMC_INTERRUPT) & SD_INTERRUPT_DATA_READY && i < 128) {
+        buf2[i] = get32(SDEMMC_DATA);
+        i++;
+    }
+    dev->iblk++;
+
+    // Return number of blocks read
+    return 1;
+}
+
+static int sd_seek_blk(struct block_dev *dev, unsigned int iblk) {
+    // Seeking for SD cards is trivial.
+    dev->iblk = iblk;
+    return 0;
+}
+
+int sd_initialize(struct block_dev *dev) {
     if(sd_reset() != 0) {
         uart_print("SD card initialization failed!\r\n");
         return -1;
     }
     uart_print("Initalized SD card!\r\n");
-
-    // struct sd_cid cid = sd_get_cid();
-    // print_cid(&cid);
-
-    unsigned char buff[512];
-    unsigned int *buff2 = (unsigned int*)buff;
-    if(sd_exec_cmd17()) {
-        uart_print("Read failed!\r\n");
-    }
-    int i = 0;
-    while(get32(SDEMMC_INTERRUPT) & SD_INTERRUPT_DATA_READY && i < 128) {
-        buff2[i] = get32(SDEMMC_DATA);
-        i++;
-    }
-    uart_print("SD: Read ");
-    print_int(i*4);
-    uart_print(" bytes\r\n");
-
-    // print_hex(buff, 512);
+    dev->block_size = 512;
+    strncpy(dev->driver_str, "SD_DEVICE", sizeof(dev->driver_str));
+    dev->read_blk = sd_read_blk;
+    dev->seek_blk = sd_seek_blk;
 
     return 0;
 }
