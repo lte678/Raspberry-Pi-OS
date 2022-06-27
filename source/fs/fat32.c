@@ -73,6 +73,17 @@ static int fat32_load_fat(struct fat32_disk *part) {
     }
 }
 
+static int fat32_load_cluster(struct fat32_disk *partition, uint8_t *buffer, uint32_t cluster_index) {
+    unsigned int blk = partition->data_sector + (cluster_index - 2) * partition->bpb->sectors_per_cluster;
+    if(seek_blk(partition->dev, (blk*partition->bpb->bytes_per_sector) / partition->dev->block_size)) {
+        return 1;
+    }
+
+    if(read_blk(partition->dev, buffer) != 1) {
+        return 1;
+    }
+}
+
 void print_bpb(struct bios_parameter_block *bpb) {
     uart_print("BIOS Parameter Block");
 
@@ -106,22 +117,96 @@ void print_bpb(struct bios_parameter_block *bpb) {
     uart_print("\r\n");
 }
 
+static char ucs2_to_ascii(uint16_t ucs_byte) {
+    if(ucs_byte < 127) {
+        return ucs_byte;
+    }
+    return '?';
+}
+
 /*
  * Parses the 32 byte entry_row and appends the data it contains to the result.
- * Returns 1 when it has completed reading the entry.
+ * Returns 0 when it has completed reading the entry (we count down to the starting index 0).
+ * Return 0xFE when a zero entry has been reached -> end of directory table.
  */
-int parse_directory_entry(struct directory_entry *result, uint8_t *entry_row) {
+static uint8_t parse_directory_entry(struct directory_entry *result, uint8_t *entry_row, uint8_t prev_index) {
+    if(entry_row[0] == 0x00 || entry_row[0] == 0xE5) {
+        return 0xFE;
+    }
+
     if(entry_row[11] & 0x0F == 0x0F) {
-            // Long file name
-            
+        // Long file name
+
+        // Check index
+        // An index of over 18 is invalid.
+        uint8_t index = entry_row[0] & 0x3F;
+        if(index > 18 || index == 0) {
+            return 0xFF;
+        }
+        // Bit 0x40 indicates it is the first entry.
+        if(entry_row[0] & 0x40) {
+            // Expected termination
+            result->name[(index)*13] = 0;
+        } else if(index != prev_index - 1) {
+            uart_print("parse_directory_entry: Unexpected LFN order.\r\n");
+            return 0xFF;
+        }
+        
+        // Extract characters
+        char lfn_chars[13];
+        lfn_chars[0] = ucs2_to_ascii(*(uint16_t*)(entry_row + 1));
+        lfn_chars[1] = ucs2_to_ascii(*(uint16_t*)(entry_row + 3));
+        lfn_chars[2] = ucs2_to_ascii(*(uint16_t*)(entry_row + 5));
+        lfn_chars[3] = ucs2_to_ascii(*(uint16_t*)(entry_row + 7));
+        lfn_chars[4] = ucs2_to_ascii(*(uint16_t*)(entry_row + 9));
+        lfn_chars[5] = ucs2_to_ascii(*(uint16_t*)(entry_row + 14));
+        lfn_chars[6] = ucs2_to_ascii(*(uint16_t*)(entry_row + 16));
+        lfn_chars[7] = ucs2_to_ascii(*(uint16_t*)(entry_row + 18));
+        lfn_chars[8] = ucs2_to_ascii(*(uint16_t*)(entry_row + 20));
+        lfn_chars[9] = ucs2_to_ascii(*(uint16_t*)(entry_row + 22));
+        lfn_chars[10] = ucs2_to_ascii(*(uint16_t*)(entry_row + 24));
+        lfn_chars[11] = ucs2_to_ascii(*(uint16_t*)(entry_row + 28));
+        lfn_chars[12] = ucs2_to_ascii(*(uint16_t*)(entry_row + 30));
+
+        // Append characters to directory name.
+        strncpy(result->name + (index-1)*13, lfn_chars, 13);
+
+        // Return the index
+        return index;
     }
     
     // It is a short entry. The entry is complete.
     // Mark directories as such.
     if(entry_row[11] & 0x10) {
         result->is_directory = 1;
+    } else {
+        result->is_directory = 0;
     }
-    return 1;
+    // Extract the cluster
+    result->cluster_idx = *(uint16_t*)(entry_row + 26);
+    result->cluster_idx |= (uint32_t)(*(uint16_t*)(entry_row + 20)) << 16;
+    // If the prev index was 0, this is the only entry, and not part of a LFN!
+    if(prev_index == 0) {
+        int i = 0;
+        while(i < 8 && entry_row[i] != 0x20) {
+            result->name[i] = entry_row[i];
+            i++;
+        }
+        if(entry_row[8] != 0x20) {
+            result->name[i] = '.';
+            i++;
+        }
+        for(int j = 0; j < 3; j++) {
+            if(entry_row[8 + j] == 0x20) {
+                break;
+            }
+            result->name[i] = entry_row[8 + j];
+            i++;
+        }
+        result->name[i] = 0;
+    }
+
+    return 0;
 }
 
 struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
@@ -144,22 +229,32 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
 
     // We are ready to read the file system tree
     uart_print("Loading filesystem tree...\r\n");
-    unsigned int root_blk = partition->data_sector + (partition->bpb->root_cluster - 2) * partition->bpb->sectors_per_cluster;
-    seek_blk(partition->dev, (root_blk*partition->bpb->bytes_per_sector) / partition->dev->block_size);
-
     unsigned char *blk_buff = kmalloc(partition->dev->block_size, 0);
-    if(read_blk(partition->dev, blk_buff) != 1) {
-        uart_print("Failed to read block device.\r\n");
-        free(blk_buff);
-        return 0;
-    }
+    fat32_load_cluster(partition, blk_buff, partition->bpb->root_cluster);
+
+    // Parse file tree
+    uint8_t prev_index;
     for(int i = 0; i < 16; i++) {
-        print_hex(blk_buff, 32);
-        
+        struct directory_entry dir;
+        prev_index = parse_directory_entry(&dir, blk_buff, prev_index);
+        if(prev_index == 0) {
+            uart_print(dir.name);
+            uart_print("   ");
+            print_uint(dir.cluster_idx);
+            if(dir.is_directory) {
+                uart_print(" d");
+            }
+            uart_print("\r\n");
+        } else if(prev_index == 0xFF) {
+            uart_print("FAT32 directory entry parse error.\r\n");
+            prev_index = 0;
+        } else if(prev_index == 0xFE) {
+            // Null entry.
+            prev_index = 0;
+        }
+
         blk_buff += 32;
-        uart_print("\r\n");
     }
-    //uart_print(blk_buff);
 
     return partition;
 
