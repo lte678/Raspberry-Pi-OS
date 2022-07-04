@@ -14,6 +14,13 @@ int read_blk(struct block_dev *dev, void *buf) {
     return dev->read_blk(dev, buf);
 }
 
+int read_nblk(struct block_dev *dev, void *buf, unsigned int n) {
+    if(!dev->read_nblk) {
+        return -1;
+    }
+    return dev->read_nblk(dev, buf, n);
+}
+
 int read_blks(struct block_dev *dev, int n, void *buf) {
     if(!dev->read_blks) {
         return -1;

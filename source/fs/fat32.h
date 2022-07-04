@@ -40,16 +40,18 @@ struct bios_parameter_block {
 
 struct fat32_disk {
     struct block_dev *dev;
+    struct inode *root_node;
+
     struct bios_parameter_block *bpb;
     unsigned int fat_entries;
     unsigned int data_sector;
+    unsigned int bytes_per_cluster;
     uint32_t *fat;
 };
 
-struct directory_entry {
-    char name[256];
-    uint8_t is_directory;
-    uint32_t cluster_idx;
+struct fat32_inode_data {
+    struct fat32_disk *partition;
+    uint32_t cluster;
 };
 
 struct fat32_disk* init_fat32_disk(struct block_dev *dev);

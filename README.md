@@ -16,6 +16,7 @@ _Hello recruiters ^^_
 - SD card driver
 - Slab allocator
 - Buddy block allocator
+- Virtual file system (WIP)
 - Interrupt handling (WIP)
 - Platform timer (WIP)
 - Virtual memory (WIP)
@@ -23,5 +24,4 @@ _Hello recruiters ^^_
 
 ## Todo
 
-- Virtual file system
 - `printf`

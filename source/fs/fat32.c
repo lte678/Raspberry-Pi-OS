@@ -1,7 +1,11 @@
 #include <kernel/block.h>
 #include <kernel/mem.h>
 #include <kernel/alloc.h>
+#include <kernel/inode.h>
 #include "fat32.h"
+
+
+static struct inode_ops fat32_inode_ops;
 
 
 static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *dev) {
@@ -73,16 +77,216 @@ static int fat32_load_fat(struct fat32_disk *part) {
     }
 }
 
-static int fat32_load_cluster(struct fat32_disk *partition, uint8_t *buffer, uint32_t cluster_index) {
+
+static int fat32_load_cluster(struct fat32_disk *partition, uint8_t *buffer, unsigned int n, uint32_t cluster_index) {
     unsigned int blk = partition->data_sector + (cluster_index - 2) * partition->bpb->sectors_per_cluster;
     if(seek_blk(partition->dev, (blk*partition->bpb->bytes_per_sector) / partition->dev->block_size)) {
         return 1;
     }
 
-    if(read_blk(partition->dev, buffer) != 1) {
+    if(n == 0) {
+        if(read_blk(partition->dev, buffer) != 1) {
+            return 1;
+        }
+    } else {
+        if(read_nblk(partition->dev, buffer, n) != 1) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static unsigned int fat32_load_cluster_chain(struct fat32_disk *partition, uint8_t *buffer, unsigned int buffer_size, uint32_t cluster_index) {
+    unsigned int bytes_read = 0;
+    uint32_t current_cluster = cluster_index;
+    while(bytes_read < buffer_size) {
+        if(fat32_load_cluster(partition, buffer + bytes_read, buffer_size - bytes_read, current_cluster)) {
+            return 0;
+        }
+        // Find next cluster index
+        current_cluster = partition->fat[current_cluster];
+        if((current_cluster & 0x0FFFFFF8) == 0x0FFFFFF8) {
+            // End of file/directory
+            break;
+        }
+    }
+    return bytes_read;
+}
+
+static char ucs2_to_ascii(uint16_t ucs_byte) {
+    if(ucs_byte < 127) {
+        return ucs_byte;
+    }
+    return '?';
+}
+
+
+/*
+ * Parses the 32 byte entry_row and appends the data it contains to the result.
+ * Returns 0 when it has completed reading the entry (we count down to the starting index 0).
+ * Return 0xFE when a zero entry has been reached -> end of directory table.
+ */
+static uint8_t parse_directory_entry(struct inode *result, uint8_t *entry_row, uint8_t prev_index) {
+    if(entry_row[0] == 0x00 || entry_row[0] == 0xE5) {
+        return 0xFE;
+    }
+
+    if((entry_row[11] & 0x0F) == 0x0F) {
+        // Long file name
+
+        // Check index
+        // An index of over 18 is invalid.
+        uint8_t index = entry_row[0] & 0x3F;
+        if(index > 18 || index == 0) {
+            return 0xFF;
+        }
+        // Bit 0x40 indicates it is the first entry.
+        if(entry_row[0] & 0x40) {
+            // Expected termination
+            result->filename[(index)*13] = 0;
+        } else if(index != prev_index - 1) {
+            uart_print("parse_directory_entry: Unexpected LFN order.\r\n");
+            return 0xFF;
+        }
+        
+        // Extract characters
+        char lfn_chars[13];
+        lfn_chars[0] = ucs2_to_ascii(*(uint16_t*)(entry_row + 1));
+        lfn_chars[1] = ucs2_to_ascii(*(uint16_t*)(entry_row + 3));
+        lfn_chars[2] = ucs2_to_ascii(*(uint16_t*)(entry_row + 5));
+        lfn_chars[3] = ucs2_to_ascii(*(uint16_t*)(entry_row + 7));
+        lfn_chars[4] = ucs2_to_ascii(*(uint16_t*)(entry_row + 9));
+        lfn_chars[5] = ucs2_to_ascii(*(uint16_t*)(entry_row + 14));
+        lfn_chars[6] = ucs2_to_ascii(*(uint16_t*)(entry_row + 16));
+        lfn_chars[7] = ucs2_to_ascii(*(uint16_t*)(entry_row + 18));
+        lfn_chars[8] = ucs2_to_ascii(*(uint16_t*)(entry_row + 20));
+        lfn_chars[9] = ucs2_to_ascii(*(uint16_t*)(entry_row + 22));
+        lfn_chars[10] = ucs2_to_ascii(*(uint16_t*)(entry_row + 24));
+        lfn_chars[11] = ucs2_to_ascii(*(uint16_t*)(entry_row + 28));
+        lfn_chars[12] = ucs2_to_ascii(*(uint16_t*)(entry_row + 30));
+
+        // Append characters to directory name.
+        strncpy(result->filename + (index-1)*13, lfn_chars, 13);
+
+        // Return the index
+        return index;
+    }
+    
+    // It is a short entry. The entry is complete.
+    // Mark directories as such.
+    if(entry_row[11] & 0x10) {
+        result->state |= INODE_TYPE_DIR;
+    } else {
+        result->state |= INODE_TYPE_FILE;
+    }
+    // Extract the cluster
+    struct fat32_inode_data *fat_data = result->fs_data;
+    fat_data->cluster = *(uint16_t*)(entry_row + 26);
+    fat_data->cluster |= (uint32_t)(*(uint16_t*)(entry_row + 20)) << 16;
+    // If the prev index was 0, this is the only entry, and not part of a LFN!
+    if(prev_index == 0) {
+        int i = 0;
+        while(i < 8 && entry_row[i] != 0x20) {
+            result->filename[i] = entry_row[i];
+            i++;
+        }
+        if(entry_row[8] != 0x20) {
+            result->filename[i] = '.';
+            i++;
+        }
+        for(int j = 0; j < 3; j++) {
+            if(entry_row[8 + j] == 0x20) {
+                break;
+            }
+            result->filename[i] = entry_row[8 + j];
+            i++;
+        }
+        result->filename[i] = 0;
+    }
+
+    return 0;
+}
+
+
+// This is not a real inode operation. It is called by the op "inode_read_data" when the inode is a directory.
+static int fat32_inode_read_directory(struct inode *n) {
+    struct fat32_inode_data *n_data = (struct fat32_inode_data*)n->fs_data;
+    uint32_t n_cluster = n_data->cluster;
+    struct fat32_disk *partition = n_data->partition;
+
+    unsigned char *blk_buff = kmalloc(partition->bytes_per_cluster, 0);
+    uint8_t prev_index = 0;
+    struct inode *new_child = alloc_inode();
+    new_child->parent_node = n;
+    new_child->ops = fat32_inode_ops;
+    new_child->fs_data = kmalloc(sizeof(struct fat32_inode_data), ALLOC_ZERO_INIT);
+    while(1) {
+        fat32_load_cluster(partition, blk_buff, 0, n_cluster);
+        for(int i = 0; i < 16; i++) {
+            prev_index = parse_directory_entry(new_child, blk_buff, prev_index);
+            if(prev_index == 0) {
+                // Valid child inode
+                inode_insert_child(n, new_child);
+
+                new_child = alloc_inode();
+            } else if(prev_index == 0xFF) {
+                uart_print("FAT32 directory entry parse error.\r\n");
+                free(new_child);
+                return 1;
+            } else if(prev_index == 0xFE) {
+                free(new_child);
+                return 0;
+            }
+            blk_buff += 32;
+        }
+        // Find next cluster index
+        n_cluster = partition->fat[n_cluster];
+        if((n_cluster & 0x0FFFFFF8) == 0x0FFFFFF8) {
+            // End of file/directory
+            free(new_child);
+            return 0;
+        }
+    }
+}
+
+
+/*
+ * Allocates memory for inode (if unallocated and file), and reads the file/folder contents
+ */
+static int fat32_inode_read_data(struct inode *n) {
+    struct fat32_inode_data *n_data = (struct fat32_inode_data*)n->fs_data;
+    uint32_t n_cluster = n_data->cluster;
+    struct fat32_disk *partition = n_data->partition;
+
+    if(n->state & INODE_TYPE_DIR) {
+        // Load directory
+        if(fat32_inode_read_directory(n)) {
+            uart_print("Failed to load FAT32 directory entry.\r\n");
+            return 1;
+        }
+        n->state |= INODE_STATE_VALID;
+        return 0;
+    } else if(n->state & INODE_TYPE_FILE) {
+        // Load file
+        if(!n->data) {
+            // Data size is populated in new FAT32 inodes, so we may use it here.
+            // Don't zero the memory.
+            n->data = kmalloc(n->data_size, 0);
+        }
+        if(fat32_load_cluster_chain(partition, n->data, n->data_size, n_cluster) != n->data_size) {
+            // We did not load the expected number of bytes.
+            uart_print("Unexpected number of bytes in file!\r\n");
+            return 1;
+        }
+        // Success!
+        n->state |= INODE_STATE_VALID;
+        return 0;
+    } else {
+        uart_print("Unknown inode type.\r\n");
         return 1;
     }
 }
+
 
 void print_bpb(struct bios_parameter_block *bpb) {
     uart_print("BIOS Parameter Block");
@@ -117,97 +321,12 @@ void print_bpb(struct bios_parameter_block *bpb) {
     uart_print("\r\n");
 }
 
-static char ucs2_to_ascii(uint16_t ucs_byte) {
-    if(ucs_byte < 127) {
-        return ucs_byte;
-    }
-    return '?';
-}
 
-/*
- * Parses the 32 byte entry_row and appends the data it contains to the result.
- * Returns 0 when it has completed reading the entry (we count down to the starting index 0).
- * Return 0xFE when a zero entry has been reached -> end of directory table.
- */
-static uint8_t parse_directory_entry(struct directory_entry *result, uint8_t *entry_row, uint8_t prev_index) {
-    if(entry_row[0] == 0x00 || entry_row[0] == 0xE5) {
-        return 0xFE;
-    }
+static struct inode_ops fat32_inode_ops = {
+    .read_data = fat32_inode_read_data,
+    .write_data = 0
+};
 
-    if(entry_row[11] & 0x0F == 0x0F) {
-        // Long file name
-
-        // Check index
-        // An index of over 18 is invalid.
-        uint8_t index = entry_row[0] & 0x3F;
-        if(index > 18 || index == 0) {
-            return 0xFF;
-        }
-        // Bit 0x40 indicates it is the first entry.
-        if(entry_row[0] & 0x40) {
-            // Expected termination
-            result->name[(index)*13] = 0;
-        } else if(index != prev_index - 1) {
-            uart_print("parse_directory_entry: Unexpected LFN order.\r\n");
-            return 0xFF;
-        }
-        
-        // Extract characters
-        char lfn_chars[13];
-        lfn_chars[0] = ucs2_to_ascii(*(uint16_t*)(entry_row + 1));
-        lfn_chars[1] = ucs2_to_ascii(*(uint16_t*)(entry_row + 3));
-        lfn_chars[2] = ucs2_to_ascii(*(uint16_t*)(entry_row + 5));
-        lfn_chars[3] = ucs2_to_ascii(*(uint16_t*)(entry_row + 7));
-        lfn_chars[4] = ucs2_to_ascii(*(uint16_t*)(entry_row + 9));
-        lfn_chars[5] = ucs2_to_ascii(*(uint16_t*)(entry_row + 14));
-        lfn_chars[6] = ucs2_to_ascii(*(uint16_t*)(entry_row + 16));
-        lfn_chars[7] = ucs2_to_ascii(*(uint16_t*)(entry_row + 18));
-        lfn_chars[8] = ucs2_to_ascii(*(uint16_t*)(entry_row + 20));
-        lfn_chars[9] = ucs2_to_ascii(*(uint16_t*)(entry_row + 22));
-        lfn_chars[10] = ucs2_to_ascii(*(uint16_t*)(entry_row + 24));
-        lfn_chars[11] = ucs2_to_ascii(*(uint16_t*)(entry_row + 28));
-        lfn_chars[12] = ucs2_to_ascii(*(uint16_t*)(entry_row + 30));
-
-        // Append characters to directory name.
-        strncpy(result->name + (index-1)*13, lfn_chars, 13);
-
-        // Return the index
-        return index;
-    }
-    
-    // It is a short entry. The entry is complete.
-    // Mark directories as such.
-    if(entry_row[11] & 0x10) {
-        result->is_directory = 1;
-    } else {
-        result->is_directory = 0;
-    }
-    // Extract the cluster
-    result->cluster_idx = *(uint16_t*)(entry_row + 26);
-    result->cluster_idx |= (uint32_t)(*(uint16_t*)(entry_row + 20)) << 16;
-    // If the prev index was 0, this is the only entry, and not part of a LFN!
-    if(prev_index == 0) {
-        int i = 0;
-        while(i < 8 && entry_row[i] != 0x20) {
-            result->name[i] = entry_row[i];
-            i++;
-        }
-        if(entry_row[8] != 0x20) {
-            result->name[i] = '.';
-            i++;
-        }
-        for(int j = 0; j < 3; j++) {
-            if(entry_row[8 + j] == 0x20) {
-                break;
-            }
-            result->name[i] = entry_row[8 + j];
-            i++;
-        }
-        result->name[i] = 0;
-    }
-
-    return 0;
-}
 
 struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     struct fat32_disk *partition = kmalloc(sizeof(struct fat32_disk), ALLOC_ZERO_INIT);
@@ -219,6 +338,8 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     }
     partition->fat_entries = partition->bpb->sectors_per_fat * partition->bpb->bytes_per_sector / 4;
     partition->data_sector = partition->bpb->nr_reserved_sectors + partition->bpb->nr_file_allocation_tables * partition->bpb->sectors_per_fat;
+    partition->bytes_per_cluster = partition->bpb->sectors_per_cluster * partition->bpb->bytes_per_sector;
+
     if(fat32_check_valid(partition->bpb)) {
         goto init_failure;
     }
@@ -227,34 +348,18 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
         goto init_failure;
     }
 
-    // We are ready to read the file system tree
-    uart_print("Loading filesystem tree...\r\n");
-    unsigned char *blk_buff = kmalloc(partition->dev->block_size, 0);
-    fat32_load_cluster(partition, blk_buff, partition->bpb->root_cluster);
-
-    // Parse file tree
-    uint8_t prev_index;
-    for(int i = 0; i < 16; i++) {
-        struct directory_entry dir;
-        prev_index = parse_directory_entry(&dir, blk_buff, prev_index);
-        if(prev_index == 0) {
-            uart_print(dir.name);
-            uart_print("   ");
-            print_uint(dir.cluster_idx);
-            if(dir.is_directory) {
-                uart_print(" d");
-            }
-            uart_print("\r\n");
-        } else if(prev_index == 0xFF) {
-            uart_print("FAT32 directory entry parse error.\r\n");
-            prev_index = 0;
-        } else if(prev_index == 0xFE) {
-            // Null entry.
-            prev_index = 0;
-        }
-
-        blk_buff += 32;
+    // Create root inode
+    partition->root_node = alloc_inode();
+    if(!partition->root_node) {
+        uart_print("Failed to allocated root node.\r\n");
+        goto init_failure;
     }
+    partition->root_node->state |= INODE_TYPE_DIR;
+    partition->root_node->parent_node = 0;
+    partition->root_node->ops = fat32_inode_ops;
+    partition->root_node->fs_data = kmalloc(sizeof(struct fat32_inode_data), ALLOC_ZERO_INIT);
+    ((struct fat32_inode_data*)partition->root_node->fs_data)->cluster = 2;
+    ((struct fat32_inode_data*)partition->root_node->fs_data)->partition = partition;
 
     return partition;
 

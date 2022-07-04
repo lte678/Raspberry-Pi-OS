@@ -624,7 +624,7 @@ static int sd_reset() {
     return 0;
 }
 
-static int sd_read_blk(struct block_dev *dev, void *buf) {
+static int sd_read_nblk(struct block_dev *dev, void *buf, unsigned int n) {
     // struct sd_cid cid = sd_get_cid();
     // print_cid(&cid);
 
@@ -634,6 +634,20 @@ static int sd_read_blk(struct block_dev *dev, void *buf) {
     int i = 0;
     unsigned int *buf2 = (unsigned int*)buf;
     while(get32(SDEMMC_INTERRUPT) & SD_INTERRUPT_DATA_READY && i < 128) {
+        if((i+1)*4 > n) {
+            // End of buffer
+            uint8_t data[4];
+            *(uint32_t*)data = get32(SDEMMC_DATA);
+            if(n > i*4) {
+                ((uint8_t*)buf)[i*4] = data[0];
+            } if(n > i*4 + 1) {
+                ((uint8_t*)buf)[i*4 + 1] = data[1];
+            } if(n > i*4 + 2) {
+                ((uint8_t*)buf)[i*4 + 2] = data[2];
+            }
+
+            return 1;
+        }
         buf2[i] = get32(SDEMMC_DATA);
         i++;
     }
@@ -641,6 +655,10 @@ static int sd_read_blk(struct block_dev *dev, void *buf) {
 
     // Return number of blocks read
     return 1;
+}
+
+static int sd_read_blk(struct block_dev *dev, void *buf) {
+    return sd_read_nblk(dev, buf, dev->block_size);
 }
 
 static int sd_seek_blk(struct block_dev *dev, unsigned int iblk) {
@@ -658,6 +676,7 @@ int sd_initialize(struct block_dev *dev) {
     dev->block_size = 512;
     strncpy(dev->driver_str, "SD_DEVICE", sizeof(dev->driver_str));
     dev->read_blk = sd_read_blk;
+    dev->read_nblk = sd_read_nblk;
     dev->seek_blk = sd_seek_blk;
 
     return 0;
