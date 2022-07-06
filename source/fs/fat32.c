@@ -220,6 +220,7 @@ static int fat32_inode_read_directory(struct inode *n) {
     new_child->parent_node = n;
     new_child->ops = fat32_inode_ops;
     new_child->fs_data = kmalloc(sizeof(struct fat32_inode_data), ALLOC_ZERO_INIT);
+    ((struct fat32_inode_data*)new_child->fs_data)->partition = partition;
     while(1) {
         fat32_load_cluster(partition, blk_buff, 0, n_cluster);
         for(int i = 0; i < 16; i++) {
@@ -229,6 +230,10 @@ static int fat32_inode_read_directory(struct inode *n) {
                 inode_insert_child(n, new_child);
 
                 new_child = alloc_inode();
+                new_child->parent_node = n;
+                new_child->ops = fat32_inode_ops;
+                new_child->fs_data = kmalloc(sizeof(struct fat32_inode_data), ALLOC_ZERO_INIT);
+                ((struct fat32_inode_data*)new_child->fs_data)->partition = partition;
             } else if(prev_index == 0xFF) {
                 uart_print("FAT32 directory entry parse error.\r\n");
                 free(new_child);
@@ -264,7 +269,7 @@ static int fat32_inode_read_data(struct inode *n) {
             uart_print("Failed to load FAT32 directory entry.\r\n");
             return 1;
         }
-        n->state |= INODE_STATE_VALID;
+        n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_VALID;
         return 0;
     } else if(n->state & INODE_TYPE_FILE) {
         // Load file
@@ -279,7 +284,7 @@ static int fat32_inode_read_data(struct inode *n) {
             return 1;
         }
         // Success!
-        n->state |= INODE_STATE_VALID;
+        n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_VALID;
         return 0;
     } else {
         uart_print("Unknown inode type.\r\n");

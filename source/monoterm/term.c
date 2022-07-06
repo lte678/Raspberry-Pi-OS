@@ -57,6 +57,7 @@ int process_input(char *s) {
 
 static void print_prompt() {
     term_set_bold();
+    term_set_color(2);
     uart_print(">>>");
     term_reset_font();
 }

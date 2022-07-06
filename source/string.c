@@ -89,7 +89,9 @@ int utos(unsigned int num, char *buffer, unsigned int n) {
     return ultos((unsigned long)num, buffer, n);
 }
 
-
+/*
+ * Returns 0 if strings match
+ */
 int strcmp(char *s1, char *s2) {
     while(*s1 && *s2) {
         if(*s1 != *s2) {
@@ -102,6 +104,14 @@ int strcmp(char *s1, char *s2) {
         return -1;
     }
     return 0;
+}
+
+int strlen(char *s) {
+    int i = 0;
+    while(s[i]) {
+        i++;
+    }
+    return i;
 }
 
 void strncpy(char *dest, char *src, unsigned int n) {

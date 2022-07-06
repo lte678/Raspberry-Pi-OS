@@ -71,19 +71,7 @@ void kernel_entry_point(void) {
         uart_print("Failed to load root partition!\r\n");
         panic();
     }
-    struct inode *root_node = root_part->root_node;
-    inode_print(root_node);
-
-    if(inode_read_data(root_node)) {
-        uart_print("Failed to read root inode.\r\n");
-        panic();
-    }
-
-    struct inode *children = root_node->child_nodes;
-    while(children) {
-        inode_print(children);
-        children = children->peer_nodes;
-    }
+    g_root_inode = root_part->root_node;
 
     // Start monolithic kernel console
     monoterm_start();

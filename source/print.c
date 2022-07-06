@@ -182,6 +182,12 @@ void term_set_bold() {
     uart_print("\x1B[1m");
 }
 
+void term_set_color(int code) {
+    uart_print("\x1B[38;5;");
+    print_int(code);
+    uart_print("m");
+}
+
 void term_reset_font() {
     uart_print("\x1B[0m");
 }

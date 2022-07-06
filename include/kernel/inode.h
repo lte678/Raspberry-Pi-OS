@@ -1,8 +1,8 @@
 #include <kernel/block.h>
 
 #define INODE_STATE_MASK    0x0F
-#define INODE_STATE_NEW     0x00
-#define INODE_STATE_VALID   0x01
+#define INODE_STATE_NEW     0x01
+#define INODE_STATE_VALID   0x02
 
 #define INODE_TYPE_MASK     0xF0
 #define INODE_TYPE_FILE     0x10
@@ -40,4 +40,7 @@ struct inode *alloc_inode();
 int inode_read_data(struct inode *n);
 int inode_write_data(struct inode *n);
 void inode_insert_child(struct inode *parent, struct inode *child);
+struct inode *inode_from_path(struct inode *root, char *path);
 void inode_print(struct inode *n);
+
+extern struct inode* g_root_inode;
