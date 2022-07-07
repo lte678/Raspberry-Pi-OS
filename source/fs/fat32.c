@@ -183,6 +183,7 @@ static uint8_t parse_directory_entry(struct inode *result, uint8_t *entry_row, u
     struct fat32_inode_data *fat_data = result->fs_data;
     fat_data->cluster = *(uint16_t*)(entry_row + 26);
     fat_data->cluster |= (uint32_t)(*(uint16_t*)(entry_row + 20)) << 16;
+    result->data_size = (uint32_t)(*(uint32_t*)(entry_row + 28));
     // If the prev index was 0, this is the only entry, and not part of a LFN!
     if(prev_index == 0) {
         int i = 0;

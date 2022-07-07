@@ -42,7 +42,11 @@ int monoterm_ls(int argc, char *argv[]) {
         }
         
         uart_print(it->filename);
-        uart_print("\r\n");
+        for(int i = 20 - strlen(it->filename); i > 0; i--) {
+            uart_print(" ");
+        }
+        print_int(it->data_size);
+        uart_print("B\r\n");
         term_reset_font();
         it = it->peer_nodes;
     }
