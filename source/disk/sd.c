@@ -570,31 +570,28 @@ static int sd_read_nblk(struct block_dev *dev, void *buf, unsigned int n) {
     // print_cid(&cid);
 
     if(sd_exec_cmd17(dev->iblk * dev->block_size)) {
+        print("SD card error during read!\r\n");
         return -1;
     }
     int i = 0;
     unsigned int *buf2 = (unsigned int*)buf;
     while(get32(SDEMMC_INTERRUPT) & SD_INTERRUPT_DATA_READY && i < 128) {
-        if((i+1)*4 > n) {
-            // End of buffer
-            uint8_t data[4];
-            *(uint32_t*)data = get32(SDEMMC_DATA);
-            if(n > i*4) {
-                ((uint8_t*)buf)[i*4] = data[0];
-            } if(n > i*4 + 1) {
-                ((uint8_t*)buf)[i*4 + 1] = data[1];
-            } if(n > i*4 + 2) {
-                ((uint8_t*)buf)[i*4 + 2] = data[2];
-            }
-
-            return 1;
-        }
         buf2[i] = get32(SDEMMC_DATA);
+        uint8_t data[4];
+        *(uint32_t*)data = buf2[i];
+        if(n > i*4) {
+            ((uint8_t*)buf)[i*4] = data[0];
+        } if(n > i*4 + 1) {
+            ((uint8_t*)buf)[i*4 + 1] = data[1];
+        } if(n > i*4 + 2) {
+            ((uint8_t*)buf)[i*4 + 2] = data[2];
+        } if(n > i*4 + 3) {
+            ((uint8_t*)buf)[i*4 + 3] = data[3];
+        }
         i++;
     }
     dev->iblk++;
 
-    // Return number of blocks read
     return 1;
 }
 

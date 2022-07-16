@@ -9,7 +9,7 @@
 *
 * Block devices can define the following interface:
 *   int read_blk(unsigned int blk, void *buff);             // Returns the number of bytes read (1 block)
-*   int read_blk(unsigned int blk, void *buff);             // Returns the number of bytes read (1 block). Limit to buffer size.
+*   int read_nblk(unsigned int blk, void *buff, n);         // Returns the number of bytes read (1 block). Limit to buffer size.
 *   int read_blks(unsigned int blk, void *buff, int n);     // Returns the number of bytes read
 *   int write_blk(unsigned int blk, void *buff);            // Returns the number of bytes written (1 block)
 *   int write_blks(unsigned int blk, void *buff, int n);    // Returns the number of bytes written

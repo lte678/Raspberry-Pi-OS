@@ -52,3 +52,39 @@ int monoterm_ls(int argc, char *argv[]) {
     }
     return 0;
 }
+
+
+int monoterm_cat(int argc, char *argv[]) {
+    if(argc != 2) {
+        print("Invalid number of arguments.\r\nUsage: cat [file]\r\n");
+        return 1;
+    }
+
+    struct inode* file = inode_from_path(g_root_inode, argv[1]);
+    if(!file) {
+        print("Invalid file\r\n");
+        return 1;
+    }
+
+    if(file->state & INODE_TYPE_DIR) {
+        print("Target is a directory.\r\n");
+        return 1;
+    }
+    inode_read_data(file);
+
+    if(!(file->state & INODE_STATE_VALID)) {
+        print("Failed to read file.\r\n");
+        return 1;
+    }
+
+    for(unsigned int i = 0; i < file->data_size; i++) {
+        char c = ((char*)file->data)[i];
+        if(c == '\n') {
+            print("\r\n");
+        } else if(c != '\r') {
+            print("{c}", c);
+        }
+    }
+
+    return 0;
+}

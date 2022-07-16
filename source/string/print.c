@@ -208,6 +208,10 @@ void _print(char *fstring, int numargs, ...) {
                     } else {
                         // The last character is our format
                         switch(*(format_end - 1)) {
+                            case 'c':
+                                int c_arg = va_arg(args, int);
+                                uart_send((char)c_arg);
+                                break;
                             case 'i':
                             case 'd':
                                 int i_arg = va_arg(args, int);

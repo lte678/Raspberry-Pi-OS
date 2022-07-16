@@ -81,15 +81,18 @@ static int fat32_load_fat(struct fat32_disk *part) {
 static int fat32_load_cluster(struct fat32_disk *partition, uint8_t *buffer, unsigned int n, uint32_t cluster_index) {
     unsigned int blk = partition->data_sector + (cluster_index - 2) * partition->bpb->sectors_per_cluster;
     if(seek_blk(partition->dev, (blk*partition->bpb->bytes_per_sector) / partition->dev->block_size)) {
+        print("FAT32: Failed to load cluster (seek)\r\n");
         return 1;
     }
 
     if(n == 0) {
         if(read_blk(partition->dev, buffer) != 1) {
+            print("FAT32: Failed to load cluster (read)\r\n");
             return 1;
         }
     } else {
         if(read_nblk(partition->dev, buffer, n) != 1) {
+            print("FAT32: Failed to load cluster (readn)\r\n");
             return 1;
         }
     }
@@ -103,6 +106,7 @@ static unsigned int fat32_load_cluster_chain(struct fat32_disk *partition, uint8
         if(fat32_load_cluster(partition, buffer + bytes_read, buffer_size - bytes_read, current_cluster)) {
             return 0;
         }
+        bytes_read += partition->bytes_per_cluster;
         // Find next cluster index
         current_cluster = partition->fat[current_cluster];
         if((current_cluster & 0x0FFFFFF8) == 0x0FFFFFF8) {
@@ -279,9 +283,15 @@ static int fat32_inode_read_data(struct inode *n) {
             // Don't zero the memory.
             n->data = kmalloc(n->data_size, 0);
         }
-        if(fat32_load_cluster_chain(partition, n->data, n->data_size, n_cluster) != n->data_size) {
+        unsigned int bytes_loaded = fat32_load_cluster_chain(partition, n->data, n->data_size, n_cluster);
+        if(bytes_loaded < n->data_size) {
             // We did not load the expected number of bytes.
-            print("Unexpected number of bytes in file!\r\n");
+            if(bytes_loaded != 0) {
+                print("Unexpected number of bytes in file.   {u} != {u}\r\n", bytes_loaded, n->data_size);
+            }
+            free(n->data);
+            n->data = 0;
+            n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_NEW;
             return 1;
         }
         // Success!
