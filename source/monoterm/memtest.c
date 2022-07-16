@@ -6,47 +6,44 @@
 
 int static test_create_and_free(int argc, char *argv[]) {
     if(argc != 4) {
-        uart_print("Usage: memtest create_and_free [size of blocks] [number of blocks]\r\n");
+        print("Usage: memtest create_and_free [size of blocks] [number of blocks]\r\n");
         return 1;
     }
     int block_size;
     if(atoi(argv[2], &block_size)) {
-        uart_print("Invalid argument.\r\n");
+        print("Invalid argument.\r\n");
         return 1;
     }
     int number_blocks;
     if(atoi(argv[3], &number_blocks)) {
-        uart_print("Invalid argument.\r\n");
+        print("Invalid argument.\r\n");
         return 1;
     }
 
-    uart_print("Allocating pointers...\r\n");
+    print("Allocating pointers...\r\n");
     void** pointers = (void**)kmalloc(sizeof(void*) * number_blocks, 0);
     if(!pointers) {
-        uart_print("Failed to allocate memory for pointers.\r\n");
+        print("Failed to allocate memory for pointers.\r\n");
         return 1;
     }
 
-    uart_print("Allocating memory blocks...\r\n");
+    print("Allocating memory blocks...\r\n");
     for(int i = 0; i < number_blocks; i++) {
         pointers[i] = kmalloc(block_size, 0);
         if(pointers[i] == 0) {
-            uart_print("Alloc. failed for block ");
-            print_int(i);
-            uart_print("\r\n");
+            print("Alloc. failed for block {i}\r\n", i);
         } else {
-            print_address(pointers[i]);
-            uart_print("\r\n");
+            print("{p}\r\n", pointers[i]);
         }
     }
-    uart_print("Releasing...\r\n");
+    print("Releasing...\r\n");
     for(int i = 0; i < number_blocks; i++) {
         if(pointers[i]) {
             free(pointers[i]);
         }
     }
     free(pointers);
-    uart_print("Done!\r\n");
+    print("Done!\r\n");
 
     return 0;
 }
@@ -59,6 +56,6 @@ int monoterm_memtest(int argc, char *argv[]) {
         }
     }
     
-    uart_print("Usage: memtest [create_and_free]\r\n");
+    print("Usage: memtest [create_and_free]\r\n");
     return 1;
 }

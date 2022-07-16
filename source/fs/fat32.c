@@ -11,12 +11,12 @@ static struct inode_ops fat32_inode_ops;
 static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *dev) {
     unsigned char *blk_buff = kmalloc(dev->block_size, 0);
     if(read_blk(dev, blk_buff) != 1) {
-        uart_print("Failed to read block device.\r\n");
+        print("Failed to read block device.\r\n");
         return -1;
     }
 
     if(*(uint16_t*)(blk_buff + FAT32_MAGIC_NUMBER_OFFSET) != FAT32_MAGIC_NUMBER) {
-        uart_print("Block device does not contain FAT signature.\r\n");
+        print("Block device does not contain FAT signature.\r\n");
         return -1;
     }
 
@@ -36,7 +36,7 @@ static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *de
 
 static int fat32_check_valid(struct bios_parameter_block *bpb) {
     if(bpb->bytes_per_sector != FAT32_BYTES_PER_SECTOR) {
-        uart_print("Unexpected number of bytes per sector!\r\n");
+        print("Unexpected number of bytes per sector!\r\n");
         return -1;
     }
 
@@ -56,7 +56,7 @@ static int fat32_load_fat(struct fat32_disk *part) {
     while(1) {
         unsigned char *blk_buff = kmalloc(part->dev->block_size, 0);
         if(read_blk(part->dev, blk_buff) != 1) {
-            uart_print("Failed to read block device.\r\n");
+            print("Failed to read block device.\r\n");
             free(blk_buff);
             free(part->fat);
             return -1;
@@ -145,7 +145,7 @@ static uint8_t parse_directory_entry(struct inode *result, uint8_t *entry_row, u
             // Expected termination
             result->filename[(index)*13] = 0;
         } else if(index != prev_index - 1) {
-            uart_print("parse_directory_entry: Unexpected LFN order.\r\n");
+            print("parse_directory_entry: Unexpected LFN order.\r\n");
             return 0xFF;
         }
         
@@ -236,7 +236,7 @@ static int fat32_inode_read_directory(struct inode *n) {
                 new_child->fs_data = kmalloc(sizeof(struct fat32_inode_data), ALLOC_ZERO_INIT);
                 ((struct fat32_inode_data*)new_child->fs_data)->partition = partition;
             } else if(prev_index == 0xFF) {
-                uart_print("FAT32 directory entry parse error.\r\n");
+                print("FAT32 directory entry parse error.\r\n");
                 free(new_child);
                 return 1;
             } else if(prev_index == 0xFE) {
@@ -267,7 +267,7 @@ static int fat32_inode_read_data(struct inode *n) {
     if(n->state & INODE_TYPE_DIR) {
         // Load directory
         if(fat32_inode_read_directory(n)) {
-            uart_print("Failed to load FAT32 directory entry.\r\n");
+            print("Failed to load FAT32 directory entry.\r\n");
             return 1;
         }
         n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_VALID;
@@ -281,50 +281,31 @@ static int fat32_inode_read_data(struct inode *n) {
         }
         if(fat32_load_cluster_chain(partition, n->data, n->data_size, n_cluster) != n->data_size) {
             // We did not load the expected number of bytes.
-            uart_print("Unexpected number of bytes in file!\r\n");
+            print("Unexpected number of bytes in file!\r\n");
             return 1;
         }
         // Success!
         n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_VALID;
         return 0;
     } else {
-        uart_print("Unknown inode type.\r\n");
+        print("Unknown inode type.\r\n");
         return 1;
     }
 }
 
 
 void print_bpb(struct bios_parameter_block *bpb) {
-    uart_print("BIOS Parameter Block");
+    print("BIOS Parameter Block\r\n");
 
-    uart_print("\r\n  Bytes per Sector:      ");
-    print_int(bpb->bytes_per_sector);
-
-    uart_print("\r\n  Sectors per Cluster:   ");
-    print_int(bpb->sectors_per_cluster);
-
-    uart_print("\r\n  Reserved Sectors:      ");
-    print_int(bpb->nr_reserved_sectors);
-
-    uart_print("\r\n  Number of FATs:        ");
-    print_int(bpb->nr_file_allocation_tables);
-
-    uart_print("\r\n  Nr. Root Dir Entrys:   ");
-    print_int(bpb->nr_root_dir_entry);
-
-    uart_print("\r\n  Sectors per FAT:       ");
-    print_int(bpb->sectors_per_fat);
-
-    uart_print("\r\n  Number of Sectors:     ");
-    print_int(bpb->nr_sectors);
-
-    uart_print("\r\n  Root Cluster:          ");
-    print_int(bpb->root_cluster);
-
-    uart_print("\r\n  Volume Label:          ");
-    uart_print(bpb->volume_label);
-
-    uart_print("\r\n");
+    print("  Bytes per Sector:      {i}\r\n", (int)bpb->bytes_per_sector);
+    print("  Sectors per Cluster:   {i}\r\n", (int)bpb->sectors_per_cluster);
+    print("  Reserved Sectors:      {i}\r\n", (int)bpb->nr_reserved_sectors);
+    print("  Number of FATs:        {i}\r\n", (int)bpb->nr_file_allocation_tables);
+    print("  Nr. Root Dir Entrys:   {i}\r\n", (int)bpb->nr_root_dir_entry);
+    print("  Sectors per FAT:       {i}\r\n", (int)bpb->sectors_per_fat);
+    print("  Number of Sectors:     {u}\r\n", bpb->nr_sectors);
+    print("  Root Cluster:          {u}\r\n", bpb->root_cluster);
+    print("  Volume Label:          {s}\r\n", bpb->volume_label);
 }
 
 
@@ -338,7 +319,7 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     struct fat32_disk *partition = kmalloc(sizeof(struct fat32_disk), ALLOC_ZERO_INIT);
     partition->bpb = kmalloc(sizeof(struct bios_parameter_block), ALLOC_ZERO_INIT);
     partition->dev = dev;
-    uart_print("Loading FAT32 BIOS Parameter Block...\r\n");
+    print("Loading FAT32 BIOS Parameter Block...\r\n");
     if(read_fat32_bpb(partition->bpb, dev)) {
         goto init_failure;
     }
@@ -349,7 +330,7 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     if(fat32_check_valid(partition->bpb)) {
         goto init_failure;
     }
-    uart_print("Loading FAT32 FAT table...\r\n");
+    print("Loading FAT32 FAT table...\r\n");
     if(fat32_load_fat(partition)) {
         goto init_failure;
     }
@@ -357,7 +338,7 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     // Create root inode
     partition->root_node = alloc_inode();
     if(!partition->root_node) {
-        uart_print("Failed to allocated root node.\r\n");
+        print("Failed to allocated root node.\r\n");
         goto init_failure;
     }
     partition->root_node->state |= INODE_TYPE_DIR;

@@ -1,5 +1,6 @@
 #include <kernel/string.h>
 #include <kernel/types.h>
+#include <kernel/valist.h>
 
 #include "uart.h"
 
@@ -158,36 +159,87 @@ void print_address(void* addr) {
     print_hex_be((unsigned char*)&addr_int, 8);
 }
 
-// Terminal control commands
 
-void term_set_cursor(int x, int y) {
-    uart_print("\x1B[");
-    print_int(x);
-    uart_print(";");
-    print_int(y);
-    uart_print("H");
-}
+void _print(char *fstring, int numargs, ...) {
+    va_list args;
+    va_start(args, numargs);
 
-void term_set_cursor_column(int x) {
-    uart_print("\x1B[");
-    print_int(x);
-    uart_print("G");
-}
+    // States
+    // 0 : Normal text
+    // 1 : Start of format string
+    // 
+    int state = 0;
+    int args_printed = 0;
+    //char *format_start = 0;
+    char *format_end = 0;
 
-void term_set_cursor_row(int x) {
-    // TODO
-}
-
-void term_set_bold() {
-    uart_print("\x1B[1m");
-}
-
-void term_set_color(int code) {
-    uart_print("\x1B[38;5;");
-    print_int(code);
-    uart_print("m");
-}
-
-void term_reset_font() {
-    uart_print("\x1B[0m");
+    while(*fstring) {
+        if(state == 0) {
+            // Outside format tag
+            if(*fstring == '{') {
+                // Start formatting code
+                //format_start = fstring + 1;
+                state = 1;
+            } else {
+                uart_send(*fstring);
+            }
+        } else {
+            // Inside format tag
+            if(*fstring == '}') {
+                format_end = fstring;
+                if(args_printed < numargs) {
+                    if(*(format_end - 1) == 'l') {
+                        // The last character specifies the variable length. Eg.: ul, xl...
+                        switch(*(format_end - 2)) {
+                            case 'u':
+                                unsigned int ul_arg = va_arg(args, unsigned long);
+                                print_ulong(ul_arg);
+                                break;
+                            case 'x':
+                                // Long hex
+                                int xl_arg = va_arg(args, unsigned long);
+                                print_hex_uint64(xl_arg);
+                                break;
+                            default:
+                                // If we only recognize the l, then print a signed long
+                                long l_arg = va_arg(args, long);
+                                print_long(l_arg);
+                        }
+                    } else {
+                        // The last character is our format
+                        switch(*(format_end - 1)) {
+                            case 'i':
+                            case 'd':
+                                int i_arg = va_arg(args, int);
+                                print_int(i_arg);
+                                break;
+                            case 'u':
+                                unsigned int u_arg = va_arg(args, unsigned int);
+                                print_uint(u_arg);
+                                break;
+                            case 's':
+                                char* s_arg = va_arg(args, char*);
+                                uart_print(s_arg);
+                                break;
+                            case 'x':
+                                int x_arg = va_arg(args, unsigned int);
+                                print_hex_uint32(x_arg);
+                                break;
+                            case 'p':
+                                void* p_arg = va_arg(args, void*);
+                                print_address(p_arg);
+                                break;
+                            default:
+                                // Discard argument, even if invalid format
+                                va_arg(args, int);
+                            }
+                    }
+                    args_printed++;
+                }
+                state = 0;
+            }
+        }
+        fstring++;
+    }
+    va_end(args);
 }

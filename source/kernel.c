@@ -17,9 +17,7 @@
 
 void print_execution_level() {
     uint32_t execution_level = read_system_reg(CurrentEL) >> 2;
-    uart_print("Executing in EL");
-    print_uint(execution_level);
-    uart_print("\r\n");
+    print("Executing in EL{u}\r\n", execution_level);
 }
 
 void kernel_entry_point(void) {
@@ -37,14 +35,12 @@ void kernel_entry_point(void) {
 
     // Uart
     uart_init();
-    uart_print("Booting LXE...\r\n");
-    uart_print("Developed by Leon Teichroeb :)\r\n");
+    print("Booting LXE...\r\n");
+    print("Developed by Leon Teichroeb :)\r\n");
 
     // Print version
     if(version_str(ver_str, sizeof(ver_str)) == 0) {
-        uart_print("Version: v");
-        uart_print(ver_str);
-        uart_print("\r\n");
+        print("Version: v{s}\r\n", ver_str);
     }
     print_execution_level();
 
@@ -54,7 +50,7 @@ void kernel_entry_point(void) {
     //   bpb.bytes_per_sector = 512;
     //   print_bpb(&bpb);
     //
-    //    uart_print("FAT32 read BPB failed!\r\n");
+    //    print("FAT32 read BPB failed!\r\n");
     //}
 
     if(init_buddy_allocator()) {
@@ -63,12 +59,12 @@ void kernel_entry_point(void) {
 
     struct block_dev *primary_sd = alloc_block_dev();
     if(sd_initialize(primary_sd)) {
-        uart_print("SD device is required to mount root directory!\r\n");
+        print("SD device is required to mount root directory!\r\n");
         panic();
     }
     struct fat32_disk *root_part = init_fat32_disk(primary_sd);
     if(!root_part) {
-        uart_print("Failed to load root partition!\r\n");
+        print("Failed to load root partition!\r\n");
         panic();
     }
     g_root_inode = root_part->root_node;

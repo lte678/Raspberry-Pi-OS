@@ -13,25 +13,14 @@ extern uint32_t __static_memory_end[];
 
 
 static void print_memory_usage() {
-    print_ulong(memory_allocated());
-    uart_print(" bytes allocated\r\n");
-    print_ulong(buddy_used_block_structs());
-    uart_print(" mem_blk structs used\r\n");
-    print_ulong(buddy_free_block_structs());
-    uart_print(" mem_blk structs free\r\n");
+    print("{ul} bytes allocated\r\n", memory_allocated());
+    print("{ul} mem_blk structs used\r\n", buddy_used_block_structs());
+    print("{ul} mem_blk structs free\r\n", buddy_free_block_structs());
 }
 
 static void print_regions() {
-    uart_print("Kernel Static: 0x");
-    print_hex_uint32((uint64_t)__static_memory_start);
-    uart_print(" - 0x");
-    print_hex_uint32((uint64_t)__static_memory_end);
-    uart_print("\r\n");
-    uart_print("Heap         : 0x");
-    print_hex_uint32((uint64_t)buddy_heap_start());
-    uart_print(" - 0x");
-    print_hex_uint32((uint64_t)buddy_heap_end());
-    uart_print("\r\n");
+    print("Kernel Static: {p} - {p}\r\n", (void*)__static_memory_start, (void*)__static_memory_end);
+    print("Heap         : {p} - {p}\r\n", buddy_heap_start(), buddy_heap_end());
 }
 
 
@@ -52,6 +41,6 @@ int monoterm_memstat(int argc, char *argv[]) {
         }
     }
     
-    uart_print("Usage: memstat [map|regions|free_lists]\r\n");
+    print("Usage: memstat [map|regions|free_lists]\r\n");
     return 1;
 }

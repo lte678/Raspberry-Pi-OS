@@ -1,5 +1,6 @@
 #include <kernel/string.h>
 #include <kernel/print.h>
+#include <kernel/term.h>
 
 #include "bindings.h"
 #include "disk/sd.h"
@@ -51,14 +52,14 @@ int process_input(char *s) {
         }
         cmd++;
     }
-    uart_print("Command not found!\r\n");
+    print("Command not found!\r\n");
     return -1;
 }
 
 static void print_prompt() {
     term_set_bold();
     term_set_color(2);
-    uart_print(">>>");
+    print(">>>");
     term_reset_font();
 }
 
@@ -73,10 +74,10 @@ void monoterm_start() {
         // Only execute \r\n and \n\r once
         if((c == '\r' && prev != '\n') || (c == '\n' && prev != '\r')) {
             input[input_i] = '\0';
-            uart_print("\r\n"); 
+            print("\r\n"); 
             // Process user input buffer
             if(process_input(input)) {
-                uart_print("Command terminated with error.\r\n");
+                print("Command terminated with error.\r\n");
             }
             // Display new prompt
             print_prompt();
@@ -84,7 +85,7 @@ void monoterm_start() {
         } else if(c == '\x7F' || c == '\x08') {
             // Handle backspace
             if(input_i) {
-                uart_print("\x08\x1B[K");
+                print("\x08\x1B[K");
                 input_i--;
             }
         } else {

@@ -46,27 +46,15 @@ void init_exceptions() {
 
 static void print_esr_and_far(uint64_t esr, uint64_t far, unsigned int error_class) {
 	// Exception link register (fault address)
-	uart_print("ELR: ");
-	print_hex_uint64(read_system_reg(ELR_EL1));
-	uart_print("\r\n");
+	print("ELR: {xl}\r\n", read_system_reg(ELR_EL1));
 	// Exception syndrome register
-	uart_print("ESR: ");
-	print_hex_uint64(esr);
-	uart_print("    FAR: ");
-	print_hex_uint64(far);
-	uart_print("\r\n");
-	uart_print("EC: ");
-	print_uint(error_class);
-	uart_print("    IL: ");
-	print_uint((esr >> 25) & 1);
-	uart_print("    ISS: ");
-	print_uint(esr & 0x1FFFFFF);
-	uart_print("\r\n");
+	print("ESR: {xl}    FAR: {xl}\r\n", esr, far);
+	print("EC: {u}    IL: {u}    ISS: {u}\r\n", error_class, (esr >> 25) & 1, esr & 0x1FFFFFF);
 }
 
 void handle_unknown_exception()
 {
-	uart_print("## UNKNOWN EXCEPTION ##\r\n");
+	print("## UNKNOWN EXCEPTION ##\r\n");
 	panic();
 }
 
@@ -76,27 +64,27 @@ void handle_exception_sync()
 	uint64_t far = read_system_reg(FAR_EL1);
 	unsigned int error_class = (esr & (0b111111 << 26)) >> 26;
 
-	uart_print("## SYNC EXCEPTION ##\r\n");
+	print("## SYNC EXCEPTION ##\r\n");
 	switch(error_class) {
 	case 7:
-		uart_print("Invalid vector instruction.\r\n");
+		print("Invalid vector instruction.\r\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	case 37:
 		// 0b100101: Data Abort taken without change in exception level.
-		uart_print("Invalid memory access from kernel!\r\n");
+		print("Invalid memory access from kernel!\r\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 		break;
 	default:
-		uart_print("Unidentified exception.\r\n");	
+		print("Unidentified exception.\r\n");	
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	}
 }
 
 void handle_exception_irq() {
-	uart_print(".");
+	print(".");
 	// TODO: Allow us to register interrupt handlers.
 	uint64_t time = read_system_timer();
 	set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
@@ -104,13 +92,13 @@ void handle_exception_irq() {
 
 void handle_exception_fiq()
 {
-	uart_print("## UNHANDLED FIQ EXCEPTION ##\r\n");
+	print("## UNHANDLED FIQ EXCEPTION ##\r\n");
 	panic();
 }
 
 void handle_exception_serror()
 {
-	uart_print("## SERROR EXCEPTION ##\r\n");
+	print("## SERROR EXCEPTION ##\r\n");
 	panic();
 }
 

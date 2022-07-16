@@ -20,8 +20,10 @@ _Hello recruiters ^^_
 - Interrupt handling (WIP)
 - Platform timer (WIP)
 - Virtual memory (WIP)
+- `printf`
 - Lots, and lots, and lots of bugs
 
 ## Todo
 
-- `printf`
+- Processes
+- FAT32 writing

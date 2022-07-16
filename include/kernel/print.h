@@ -4,6 +4,13 @@
 #include <kernel/string.h>
 #include <kernel/types.h>
 
+// Supports 0-10 arguments
+#define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, N, ...) N
+// ## deletes preceding comma if _VA_ARGS__ is empty (GCC, Clang)
+#define numargs(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define print(format_string, ...)  _print(format_string, numargs(__VA_ARGS__), ##__VA_ARGS__)
+
+extern void _print(char *fstring, int numargs, ...);
 
 extern void uart_send(unsigned char c);
 extern void uart_print(char *string);
@@ -17,13 +24,5 @@ extern void print_hex_uint32(unsigned int num);
 extern void print_hex_uint64(uint64_t num);
 extern void print_address(void* addr);
 // extern void print_uint(unsigned int number);
-
-// Terminal control commands
-extern void term_set_cursor(int x, int y);
-extern void term_set_cursor_column(int x);
-extern void term_set_cursor_row(int x);
-extern void term_set_bold();
-extern void term_set_color(int code);
-extern void term_reset_font();
 
 #endif  // PRINT_H

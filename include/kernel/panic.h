@@ -9,9 +9,9 @@
 
 
 _Noreturn static void panic() {
-    uart_print("####################\r\n");
-    uart_print("### KERNEL PANIC ###\r\n");
-    uart_print("####################\r\n");
+    print("####################\r\n");
+    print("### KERNEL PANIC ###\r\n");
+    print("####################\r\n");
     while(1);
 }
 

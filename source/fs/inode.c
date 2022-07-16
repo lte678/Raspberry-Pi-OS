@@ -15,7 +15,7 @@ struct inode *alloc_inode() {
 
 int inode_read_data(struct inode *n) {
     if(!n->ops.read_data) {
-        uart_print("Error: ops.read_data not defined\r\n");
+        print("Error: ops.read_data not defined\r\n");
         return -1;
     }
     return n->ops.read_data(n);
@@ -23,7 +23,7 @@ int inode_read_data(struct inode *n) {
 
 int inode_write_data(struct inode *n) {
     if(!n->ops.write_data) {
-        uart_print("Error: ops.write_data not defined\r\n");
+        print("Error: ops.write_data not defined\r\n");
         return -1;
     }
     return n->ops.write_data(n);
@@ -110,37 +110,32 @@ struct inode *inode_from_path(struct inode *root, char *path) {
         path_index = next_slash + 1;
     }
     // Search failed after 255 levels.
-    uart_print("Exceeded maximum inode depth!\r\n");
+    print("Exceeded maximum inode depth!\r\n");
     return 0;
 }
 
 void inode_print(struct inode *n) {
     if(!n) {
-        uart_print("Inode pointer invalid\r\n");
+        print("Inode pointer invalid\r\n");
         return;
     }
 
-    uart_print("Inode\r\n");
-    uart_print("  State:    ");
+    print("Inode\r\n");
+    print("  State:    ");
     if((n->state & INODE_STATE_MASK) == INODE_STATE_NEW) {
-        uart_print("new ");
+        print("new ");
     }
     if((n->state & INODE_STATE_MASK) == INODE_STATE_VALID) {
-        uart_print("valid ");
+        print("valid ");
     }
     if((n->state & INODE_TYPE_MASK) == INODE_TYPE_DIR) {
-        uart_print("directory ");
+        print("directory ");
     }
     if((n->state & INODE_TYPE_MASK) == INODE_TYPE_FILE) {
-        uart_print("file ");
+        print("file ");
     }
-    uart_print("\r\n");
+    print("\r\n");
 
-    uart_print("  Filename: ");
-    uart_print(n->filename);
-    uart_print("\r\n");
-
-    uart_print("  Size:     ");
-    print_uint(n->data_size);
-    uart_print("\r\n");
+    print("  Filename: {s}\r\n", n->filename);
+    print("  Size:     {u}\r\n", n->data_size);
 }

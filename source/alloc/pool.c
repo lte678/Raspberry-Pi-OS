@@ -95,15 +95,13 @@ void* pool_alloc(struct memory_pool *p) {
 
     /* Update counter */
     p->free_objects--;
-    // uart_print("pool alloc: ");
-    // print_address(free);
-    // uart_print("\r\n");
+    // print("pool alloc: {p}\r\n", free);
     return free;
 }
 
 void pool_free(struct memory_pool *p, void* object) {
     if(!object) {
-        uart_print("Tried to free null pointer!\r\n");
+        print("Tried to free null pointer!\r\n");
         return;
     }
     *(void**)object = p->next_free;
@@ -111,7 +109,5 @@ void pool_free(struct memory_pool *p, void* object) {
 
     /*Update counter*/
     p->free_objects++;
-    //uart_print("pool.free_objects=");
-    //print_int(p->free_objects);
-    //uart_print("\r\n");
+    //print("pool.free_objects={u}\r\n", p->free_objects);
 }

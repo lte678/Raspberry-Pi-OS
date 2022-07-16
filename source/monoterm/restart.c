@@ -5,7 +5,7 @@ extern void el1_entry();
 
 // LEGACY: Non-functional in recent versions
 int monoterm_restart(int argc, char *argv[]) {
-    uart_print("Restarting...\r\n");
+    print("Restarting...\r\n");
     // Simple jump doens't work anymore, due to virtual memory etc...
     el1_entry();
     // This return should never be called...
