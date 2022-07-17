@@ -10,7 +10,7 @@
 
 #include "alloc/buddy.h"
 #include "uart.h"
-#include "monoterm/term.h"
+#include "monoterm/monoterm.h"
 #include "fs/fat32.h"
 #include "disk/sd.h"
 

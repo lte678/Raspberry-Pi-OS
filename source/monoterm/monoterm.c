@@ -5,7 +5,7 @@
 #include "bindings.h"
 #include "disk/sd.h"
 #include "uart.h"
-#include "term.h"
+#include "monoterm.h"
 
 #define MAX_INPUT_LENGTH 256
 

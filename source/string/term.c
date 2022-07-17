@@ -15,6 +15,10 @@ void term_set_cursor_row(int x) {
     print("\r\nterm_set_cursor_row not implemented!\r\n");
 }
 
+void term_clear() {
+    print("\x1B[2J");
+}
+
 void term_set_bold() {
     print("\x1B[1m");
 }

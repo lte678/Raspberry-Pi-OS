@@ -92,18 +92,21 @@ int utos(unsigned int num, char *buffer, unsigned int n) {
 /*
  * Returns 0 if strings match
  */
-int strcmp(char *s1, char *s2) {
-    while(*s1 && *s2) {
+int strncmp(char *s1, char *s2, unsigned int n) {
+    unsigned int i = 0;
+    while((*s1 || *s2) && (i < n || n == 0)) {
         if(*s1 != *s2) {
             return -1;
         }
         s1++;
         s2++;
-    }
-    if(*s1 || *s2) {
-        return -1;
+        i++;
     }
     return 0;
+}
+
+int strcmp(char *s1, char *s2) {
+    return strncmp(s1, s2, 0);
 }
 
 int strlen(char *s) {
