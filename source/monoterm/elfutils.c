@@ -37,10 +37,13 @@ int monoterm_elfdump(int argc, char *argv[]) {
         return 1;
     }
 
-    struct elf_header *hdr = kmalloc(sizeof(struct elf_header), 0);
-    if(load_elf(elf_file->data, hdr)) {
+    struct elf_data *elf = kmalloc(sizeof(struct elf_data), ALLOC_ZERO_INIT);
+    elf->node = elf_file;
+    if(load_elf_header(elf)) {
         print("Failed to fully parse ELF header\r\n");
     }
+    struct elf_header *hdr = &elf->header;
+
 
     print("ELF Header:\r\n");
     print("    Class:           {i}\r\n", (int)hdr->elf_class);
@@ -68,6 +71,25 @@ int monoterm_elfdump(int argc, char *argv[]) {
     print("    Flags:           0x{x}\r\n", hdr->flags);
     print("    Program Headers: {i}\r\n", (int)hdr->pheader_num);
     print("    Section Headers: {i}\r\n", (int)hdr->sheader_num);
+
+    if(load_elf_program_header(elf)) {
+        print("Failed to load ELF program header\r\n");
+        return 1;
+    }
+
+    struct elf_program_header *phdr = elf->pheader;
+
+    while(phdr) {
+        print("\r\nProgram Header:\r\n");
+        print("    Segment Type:  0x{x}\r\n", phdr->segment_type);
+        print("    Segment Flags: 0x{x}\r\n", phdr->segment_flags);
+        print("    File Offset:   {ul}\r\n", phdr->file_address);
+        print("    File Size:     {ul}\r\n", phdr->file_size);
+        print("    Memory Offset: {ul}\r\n", phdr->proc_address);
+        print("    Memory Size:   {ul}\r\n", phdr->proc_size);
+        print("    Alignment:     {ul}\r\n", phdr->alignment);
+        phdr = phdr->next;
+    }
 
     return 0;
 }

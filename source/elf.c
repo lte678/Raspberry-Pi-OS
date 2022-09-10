@@ -14,7 +14,14 @@ int is_elf(void* data) {
     return 0;
 }
 
-int load_elf(void* data, struct elf_header *header) {
+
+int load_elf_header(struct elf_data *elf) {
+    void* data = elf->node->data;
+    struct elf_header *header = &elf->header;
+    if(!(elf->node->state & INODE_STATE_VALID)) {
+        return 1;
+    }
+
     memset(0, header, sizeof(*header));
 
     header->elf_class   = unpack_from(data, uint8_t, 0x04);
@@ -43,5 +50,35 @@ int load_elf(void* data, struct elf_header *header) {
     header->sheader_size = unpack_from(data, uint16_t, 0x3A);
     header->sheader_num = unpack_from(data, uint16_t, 0x3C);
     header->sheader_name_index = unpack_from(data, uint16_t, 0x3E);
+    return 0;
+}
+
+int load_elf_program_header(struct elf_data *elf) {
+    if(!(elf->node->state & INODE_STATE_VALID)) {
+        return 1;
+    }
+    
+    int nr_headers = elf->header.pheader_num;
+    if(!elf->pheader) {
+        elf->pheader = kmalloc(elf->header.pheader_size * nr_headers, 0);
+    }
+
+    struct elf_program_header *hdr = elf->pheader;
+    void *data = elf->node->data;
+    for(int i = 0; i < nr_headers; i++) {
+        uint64_t offset = (uint64_t)data + elf->header.pheader_addr + elf->header.pheader_size*i;
+        hdr[i].segment_type = unpack_from(offset, uint32_t, 0x00);
+        hdr[i].segment_flags = unpack_from(offset, uint32_t, 0x04);
+        hdr[i].file_address = unpack_from(offset, uint64_t, 0x08);
+        hdr[i].proc_address = unpack_from(offset, uint64_t, 0x10);
+        hdr[i].file_size = unpack_from(offset, uint64_t, 0x20);
+        hdr[i].proc_size = unpack_from(offset, uint64_t, 0x28);
+        hdr[i].alignment = unpack_from(offset, uint64_t, 0x30);
+        if(hdr > 0) {
+            hdr[i - 1].next = &hdr[i];
+        }
+    }
+    hdr[nr_headers - 1].next = 0;
+
     return 0;
 }

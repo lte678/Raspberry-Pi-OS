@@ -1,3 +1,6 @@
+#pragma once
+
+
 #include <kernel/block.h>
 
 #define INODE_STATE_MASK    0x0F

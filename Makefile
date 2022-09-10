@@ -92,6 +92,7 @@ asm:
 run:
 	qemu-system-aarch64 -M raspi3b \
 		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
+		-nographic\
 		-kernel kernel.img -drive file=test.img,if=sd,format=raw
 
 debug:

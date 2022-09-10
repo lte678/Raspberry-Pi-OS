@@ -1,3 +1,8 @@
+// This file is compiled with different linker settings, and may not be linked with other parts of the kernel!
+// It operates in physical address space, and prepares the switch to kernel space.
+// Many of these functions are therefore duplicated here and in pagetable.c for example.
+
+
 #include <kernel/types.h>
 #include <kernel/register.h>
 #include <kernel/page.h>

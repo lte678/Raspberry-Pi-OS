@@ -19,7 +19,7 @@
 
 
 // From vectors.s
-extern void init_exceptions();
+void init_exceptions();
 
-extern void enable_peripheral_interrupt(int interrupt_number);
-extern void disable_peripheral_interrupt(int interrupt_number);
+void enable_peripheral_interrupt(int interrupt_number);
+void disable_peripheral_interrupt(int interrupt_number);
