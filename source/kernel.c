@@ -6,6 +6,7 @@
 #include <kernel/block.h>
 #include <kernel/alloc.h>
 #include <kernel/inode.h>
+#include <kernel/pagetable.h>
 
 
 #include "alloc/buddy.h"
@@ -68,6 +69,9 @@ void kernel_entry_point(void) {
         panic();
     }
     g_root_inode = root_part->root_node;
+
+    // TODO: Deal with symbol relocation issues
+    //print("Kernel page table address: {p}\r\n", &physical_kernel_pgt_addr);
 
     // Start monolithic kernel console
     monoterm_start();

@@ -13,6 +13,80 @@ static uint16_t address_index(uint64_t addr, uint8_t level) {
 }
 
 
+static int is_table_entry(uint64_t entry) {
+    return (entry & 0b11) == 0b11;
+}
+
+
+static int is_leaf_entry(uint64_t entry) {
+    return (entry & 0b11) == 0b01;
+}
+
+
+static uint64_t get_address_from_descriptor(uint64_t desc) {
+    return desc & 0x0000FFFFFFFFF000ul;
+}
+
+
+/*!
+ * Insert a new table descriptor into the page table.
+ * @param table Pointer to the table we are modifing
+ * @param next_table Pointer to the table we are mapping
+ * @param target_address The virtual/block/table address we are inserting
+ * @param level The level of the table we are inserting into
+ */
+static void page_table_insert_table_descriptor(uint64_t* table, uint64_t* next_table, uint64_t target_address, int level) {
+    uint16_t index = address_index(target_address, level);
+    uint64_t descriptor = (uint64_t)next_table;
+    // Valid bit and index to next table
+    descriptor |= 0b11;
+    table[index] = descriptor;
+}
+
+
+/*!
+ * Insert a new block or leaf descriptor into the page table.
+ * @param table Pointer to the table we are modifing
+ * @param pa The physical address to map to
+ * @param va The virtual address we are mapping
+ * @param level The level of the table we are inserting into
+ */
+static void page_table_insert_descriptor(uint64_t* table, uint64_t pa, uint64_t va, int level) {
+    uint16_t index = address_index(va, level);
+    uint64_t descriptor = pa;
+    // Valid bit
+    descriptor |= 0b1;
+    descriptor |= 0b1 << 10;
+    table[index] = descriptor;
+    // MAIR index = 0b000, default permisions: allow all access.
+}
+
+
+/**
+ * @brief Traverses the supplied page table to translate the virtual address.
+ * 
+ * @param table A top level page table.
+ * @param a Address
+ * @return Translated address 
+ */
+uint64_t page_table_virtual_to_physical(uint64_t* table, uint64_t a) {
+    for(int level = 0; level <= 3; level++) {
+        uint16_t pgt_index = address_index(a, level);
+        uint64_t entry = table[pgt_index];
+        if(is_table_entry(entry)) {
+            table = (uint64_t*)get_address_from_descriptor(entry);
+        } else if(is_leaf_entry(entry)) {
+            return get_address_from_descriptor(entry);
+        } else {
+            // This happens when the address is not mapped and the entry 
+            // is null, for example.
+            return 0;
+        }
+    }
+    return 0;
+}
+
+
 /*!
  * Insert an address mapping for the specified range.
  * @param root_table Pointer to the page table we are modifing
@@ -48,7 +122,7 @@ int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint6
                 return -1;
             } else if((current_table[table_index] & 0b11) == 0b11) {
                 // Page table index to next table -> follow
-                current_table = current_table[table_index] & ~0b11;
+                current_table = (uint64_t*)(current_table[table_index] & ~0b11);
             } else {
                 // No entry present. Create a new table and point to it.
                 uint64_t *new_table = kmalloc(PAGE_SIZE, ALLOC_ZERO_INIT);
@@ -64,40 +138,6 @@ int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint6
     }
 
     return 0;
-}
-
-
-/*!
- * Insert a new table descriptor into the page table.
- * @param table Pointer to the table we are modifing
- * @param next_table Pointer to the table we are mapping
- * @param target_address The virtual/block/table address we are inserting
- * @param level The level of the table we are inserting into
- */
-void page_table_insert_table_descriptor(uint64_t* table, uint64_t* next_table, void* target_address, int level) {
-    uint16_t index = address_index((uint64_t)target_address, level);
-    uint64_t descriptor = (uint64_t)next_table;
-    // Valid bit and index to next table
-    descriptor |= 0b11;
-    table[index] = descriptor;
-}
-
-
-/*!
- * Insert a new block or leaf descriptor into the page table.
- * @param table Pointer to the table we are modifing
- * @param pa The physical address to map to
- * @param va The virtual address we are mapping
- * @param level The level of the table we are inserting into
- */
-void page_table_insert_descriptor(uint64_t* table, void* pa, void* va, int level) {
-    uint16_t index = address_index((uint64_t)va, level);
-    uint64_t descriptor = (uint64_t)pa;
-    // Valid bit
-    descriptor |= 0b1;
-    descriptor |= 0b1 << 10;
-    table[index] = descriptor;
-    // MAIR index = 0b000, default permisions: allow all access.
 }
 
 

@@ -1,7 +1,7 @@
 ARMGNU ?= ../../crosscompiler/bin/aarch64-none-elf
 
 OPTIONS =
-CFLAGS = -Wall -Og -g --specs=nosys.specs $(OPTIONS)
+CFLAGS = -Wall -Og -g --specs=nosys.specs -Wl,-z,max-page-size=4096 $(OPTIONS)
 
 TARGET = demo
 BUILD = build/

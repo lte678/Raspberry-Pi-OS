@@ -23,6 +23,8 @@ static uint64_t page_table1[512] __attribute__((aligned(4096))) = {};
 static uint64_t page_table2_id[512] __attribute__((aligned(4096))) = {};
 static uint64_t page_table2[512] __attribute__((aligned(4096))) = {};
 
+uint64_t* kernel_pgt_addr = page_table0 + VA_OFFSET;
+
 /*!
  * Configure the MAIR_EL1 register, which is indexed into by the processor
  * to find memory region permissions.

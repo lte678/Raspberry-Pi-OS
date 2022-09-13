@@ -2,8 +2,16 @@
 #include <kernel/pagetable.h>
 #include <kernel/alloc.h>
 #include <kernel/print.h>
+#include <kernel/page.h>
 
 
+/**
+ * @brief Checks if two address mappings overlap
+ * 
+ * @param map1 
+ * @param map2 
+ * @return 1 if overlapping
+ */
 static int memory_region_overlaps(struct address_mapping *map1, struct address_mapping *map2) {
     // Check if start or end of region 1 is inside region 2
     if(map1->vaddress >= map2->vaddress && map1->vaddress < (map2->vaddress + map2->size)) {
@@ -21,6 +29,15 @@ static int memory_region_overlaps(struct address_mapping *map1, struct address_m
 }
 
 
+/**
+ * @brief Maps virtual memory in the specified virtual address space.
+ * 
+ * @param aspace Address space containing the page tables to be modified.
+ * @param vaddr The start of the virtual address block
+ * @param paddr The start of the physical address block
+ * @param size Size of the memory region to map
+ * @return 0 for success
+ */
 int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t paddr, uint64_t size) {
     // Allocate new mapping
     struct address_mapping *new_map = kmalloc(sizeof(struct address_mapping), 0);
@@ -49,4 +66,21 @@ int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t pad
     aspace->mappings = new_map;
 
     return 0;
+}
+
+
+/**
+ * @brief Allocates and returns an address_space struct pointer.
+ */
+struct address_space* allocate_address_space() {
+    struct address_space *s = kmalloc(sizeof(struct address_space), ALLOC_ZERO_INIT);
+    if(!s) {
+        return 0;
+    }
+    s->page_table = kmalloc(PAGE_SIZE, ALLOC_ZERO_INIT);
+    if(!s->page_table) {
+        free(s);
+        return 0;
+    }
+    return s;
 }

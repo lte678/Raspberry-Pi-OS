@@ -18,3 +18,4 @@ struct address_space {
 
 
 int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t paddr, uint64_t size);
+struct address_space* allocate_address_space();

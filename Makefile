@@ -34,7 +34,7 @@ CFLAGS = -mgeneral-regs-only \
 	-Wall -Og -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files
-FOLDERS := fs disk monoterm alloc memory dev string
+FOLDERS := fs disk monoterm alloc memory dev string process
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.

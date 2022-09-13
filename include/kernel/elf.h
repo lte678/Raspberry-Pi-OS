@@ -2,6 +2,7 @@
 
 #include <kernel/types.h>
 #include <kernel/inode.h>
+#include <kernel/process.h>
 
 
 #define ELF_CLASS_32BIT 1
@@ -54,6 +55,9 @@ struct elf_data {
 };
 
 
+struct elf_data *alloc_elf_data();
 int is_elf(void* data);
 int load_elf_header(struct elf_data *elf);
 int load_elf_program_header(struct elf_data *elf);
+int load_elf(struct inode* elf_file, struct elf_data *elf);
+int elf_create_process(struct elf_data *elf, struct process *p);

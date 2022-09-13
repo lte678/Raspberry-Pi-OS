@@ -4,6 +4,12 @@
 #include "pool.h"
 
 
+/**
+ * @brief Allocates a new pool block
+ * 
+ * @param p memory_pool struct
+ * @param new_block Prespecified memory region to add to pool.
+ */
 static void pool_allocate_new_block(struct memory_pool *p, void* new_block) {
     /* Create a new block of objects and prepend them to the 'free' linked list. */
     if(!new_block) {
@@ -28,6 +34,15 @@ static void pool_allocate_new_block(struct memory_pool *p, void* new_block) {
     p->free_objects += p->block_size;
 }
 
+
+/**
+ * @brief Returns a suitable memory_pool struct. 
+ * 
+ * @param object_size The size of the data objects that we will store in the pool. Bounded to >=8 bytes.
+ * @param block_size The number of objects that fit into a single pool block.
+ * Large block sizes decrease the number allocations, but increase the potentially wasted space.
+ * @return struct memory_pool 
+ */
 struct memory_pool pool_create_pool(unsigned int object_size, unsigned int block_size) {
     struct memory_pool p;
 
@@ -50,6 +65,15 @@ struct memory_pool pool_create_pool(unsigned int object_size, unsigned int block
 }
 
 
+/**
+ * @brief Identical to pool_create_pool(), but uses a prespecified memory region.
+ * 
+ * @param object_size The size of the data objects that we will store in the pool. Bounded to >=8 bytes.
+ * @param block_bytes The size of the provided memory region.
+ * The number of objects per pool block is set according to the available space in the memory region.
+ * @param block Pointer to the memory region.
+ * @return struct memory_pool 
+ */
 struct memory_pool pool_create_pool_using_memory(unsigned int object_size, unsigned int block_bytes, void* block) {
         struct memory_pool p;
 
@@ -73,6 +97,13 @@ struct memory_pool pool_create_pool_using_memory(unsigned int object_size, unsig
 }
 
 
+/**
+ * @brief Allocates a new pool object.
+ * May attempt to allocate more space for the pool when above 80% utilisation.
+ * 
+ * @param p Pointer to the memory_pool struct.
+ * @return Object pointer.
+ */
 void* pool_alloc(struct memory_pool *p) {
     int free_percent = (p->free_objects * 100) / (p->objects);
     if(free_percent < 20 && !p->no_new_block) {
@@ -99,6 +130,14 @@ void* pool_alloc(struct memory_pool *p) {
     return free;
 }
 
+
+/**
+ * @brief Frees object from pool.
+ * Must belong to the provided memory_pool.
+ * 
+ * @param p memory_pool struct
+ * @param object Pointer to object
+ */
 void pool_free(struct memory_pool *p, void* object) {
     if(!object) {
         print("Tried to free null pointer!\r\n");
