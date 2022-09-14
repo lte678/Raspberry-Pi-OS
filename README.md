@@ -27,3 +27,6 @@ _Hello recruiters ^^_
 
 - Processes
 - FAT32 writing
+
+## Screenshot!
+![image](https://user-images.githubusercontent.com/13468015/190192540-663a7a40-f077-4d54-9980-a806416f8d43.png)
