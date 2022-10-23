@@ -192,12 +192,12 @@ void _print(char *fstring, int numargs, ...) {
                         // The last character specifies the variable length. Eg.: ul, xl...
                         switch(*(format_end - 2)) {
                             case 'u':
-                                unsigned int ul_arg = va_arg(args, unsigned long);
+                                unsigned long ul_arg = va_arg(args, unsigned long);
                                 print_ulong(ul_arg);
                                 break;
                             case 'x':
                                 // Long hex
-                                int xl_arg = va_arg(args, unsigned long);
+                                unsigned long xl_arg = va_arg(args, unsigned long);
                                 print_hex_uint64(xl_arg);
                                 break;
                             default:
