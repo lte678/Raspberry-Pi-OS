@@ -7,7 +7,8 @@
 
 # The toolchain to use. arm-none-eabi works, but there does exist 
 # arm-bcm2708-linux-gnueabi.
-ARMGNU ?= ./crosscompiler/bin/aarch64-none-elf
+#ARMGNU ?= ./crosscompiler/bin/aarch64-none-elf
+ARMGNU ?= ./toolchain/build/bin/aarch64-elf
 #ARMGNU ?= arm-none-eabi
 
 # The intermediate directory for compiled object files.

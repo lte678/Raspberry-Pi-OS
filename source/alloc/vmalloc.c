@@ -1,6 +1,7 @@
 #include <kernel/alloc.h>
 #include <kernel/types.h>
 
+// TODO: All sections of this file are only partially implemented!
 
 struct vmalloc_mapping_block {
     struct vmalloc_mapping_block* next;
@@ -17,14 +18,14 @@ struct vmalloc_mapping {
 
 // Up to 1024 vmalloc mappings
 #define VMALLOC_MAX_MAPPINGS 1024
-static uint64_t vmalloc_free_mask[VMALLOC_MAX_MAPPINGS / 64]; 
+//static uint64_t vmalloc_free_mask[VMALLOC_MAX_MAPPINGS / 64]; 
 
 struct vmalloc_mapping* vmalloc_mapping_list;
 
 
 int vmalloc_reallocate(void* addr, unsigned long new_size) {
     // TODO get mapping
-    struct vmalloc_mapping* mapping;
+    struct vmalloc_mapping* mapping = 0;
 
     while(mapping->mapped_bytes < new_size) {
         uint64_t appended_bytes;
@@ -46,6 +47,7 @@ int vmalloc_reallocate(void* addr, unsigned long new_size) {
         mapping->block_list = new_blk;
         mapping->mapped_bytes += appended_bytes;
     }
+    return 0;
 }
 
 void* vmalloc(unsigned long size, uint32_t flags) {
@@ -55,7 +57,7 @@ void* vmalloc(unsigned long size, uint32_t flags) {
     }
     new->allocation_flags = flags;
     if(vmalloc_reallocate(new, size)) {
-        (new);
+        
         free(new);
         return 0;
     }
@@ -64,14 +66,14 @@ void* vmalloc(unsigned long size, uint32_t flags) {
     struct vmalloc_mapping* prev_mapping = vmalloc_mapping_list;
     new->next = prev_mapping;
     vmalloc_mapping_list = new;
-
+    return (void*)(new->vaddress);
 }
 
 void vmalloc_free(void* address) {
     struct vmalloc_mapping* i = vmalloc_mapping_list;
     struct vmalloc_mapping* prev = 0;
     while(i) {
-        if(i->vaddress == address) {
+        if(i->vaddress == (uint64_t)address) {
             // This is the mapping to delete
             // Remove mapping from list
             if(prev) {
@@ -87,7 +89,7 @@ void vmalloc_free(void* address) {
                 free(blk->mapped_block);
                 struct vmalloc_mapping_block* next_blk = blk->next;
                 free(blk);
-                blk = blk->next;
+                blk = next_blk;
             }
             // Free mapping
             free(i);

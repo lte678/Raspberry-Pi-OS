@@ -346,7 +346,7 @@ void free(void* memory) {
 }
 
 
-void* kmalloc_largest_available(unsigned long size, uint32_t flags, unsigned long *allocated_size) {
+void* kmalloc_largest_available(uint64_t size, uint32_t flags, uint64_t *allocated_size) {
     if(flags & ALLOC_PAGE_ALIGN) {
         // An easy way to ensure alignment with buddy blocks is to just make sure the size is at least one page.
         if(size < PAGE_SIZE) {

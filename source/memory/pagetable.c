@@ -33,12 +33,12 @@ static uint64_t get_address_from_descriptor(uint64_t desc) {
     return desc & 0x0000FFFFFFFFF000ul;
 }
 
-static void tlb_invalidate_el1() {
-	__asm__ __volatile__("tlbi alle1" : : : "memory");
-}
+//static void tlb_invalidate_el1() {
+//	__asm__ __volatile__("tlbi alle1" : : : "memory");
+//}
 
 void page_table_init() {
-    kernel_page_table = *(uint64_t*)((char*)&_kernel_page_table + VA_OFFSET);
+    kernel_page_table = *(uint64_t**)((char*)&_kernel_page_table + VA_OFFSET);
 }
 
 /*!
