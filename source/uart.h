@@ -3,7 +3,8 @@
 
 #include <kernel/register.h>
 
-void uart_init(void);
+void uart_pre_init(void);
+int uart_init(void);
 
 void uart_send(unsigned char c);
 unsigned char uart_recv(void);

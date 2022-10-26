@@ -30,7 +30,7 @@ LINKER = kernel.ld
 
 # Dont use glib
 OPTIONS = # -DDEBUG_BUDDY -DDEBUG_SD
-CFLAGS = -mgeneral-regs-only \
+CFLAGS = -mgeneral-regs-only -mcmodel=large\
 	-Wall -Og -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files
@@ -76,7 +76,7 @@ $(BUILD)%.o: $(SOURCE)%.c $(BUILD_FOLDERS)
 
 # s files
 $(BUILD)%.o: $(SOURCE)%.S $(BUILD_FOLDERS)
-	$(ARMGNU)-gcc -I include/ -c $< -o $@ 
+	$(ARMGNU)-gcc  -I include/ -c $< -o $@ 
 
 # Create rule for making build folders
 $(BUILD_FOLDERS):

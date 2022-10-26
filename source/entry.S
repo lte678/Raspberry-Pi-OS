@@ -30,6 +30,10 @@ el1_entry:
     mov sp, x0
     bl mmu_enable
     bl zero_bss
+    mov x0, xzr
+    movk x0, 0x8, lsl 16
+    movk x0, 0x8000, lsl 32
+    mov sp, x0
     bl kernel_entry_point
 
 hang: b hang

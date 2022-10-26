@@ -23,7 +23,8 @@ static uint64_t page_table1[512] __attribute__((aligned(4096))) = {};
 static uint64_t page_table2_id[512] __attribute__((aligned(4096))) = {};
 static uint64_t page_table2[512] __attribute__((aligned(4096))) = {};
 
-uint64_t* kernel_pgt_addr = page_table0 + VA_OFFSET;
+// This pointer points to a kernel address, but is itself in low-mem!
+uint64_t* _kernel_page_table = (uint64_t*)((uint8_t*)page_table0 + VA_OFFSET);
 
 /*!
  * Configure the MAIR_EL1 register, which is indexed into by the processor

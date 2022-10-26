@@ -1,25 +1,34 @@
+#include <kernel/mmap.h>
+#include <kernel/print.h>
+
+#include <kernel/pagetable.h>
+
 #include "uart.h"
 
 extern void dummy ( unsigned int );
 
-#define GPFSEL1         0x3F200004
-#define GPSET0          0x3F20001C
-#define GPCLR0          0x3F200028
-#define GPPUD           0x3F200094
-#define GPPUDCLK0       0x3F200098
+#define UART_PHYSICAL_ADDR 0x3F200000ul
+#define UART_MAPPING_SIZE  0x00020000ul
+static uint64_t uart_baseaddr = UART_PHYSICAL_ADDR;
 
-#define AUX_ENABLES     0x3F215004
-#define AUX_MU_IO_REG   0x3F215040
-#define AUX_MU_IER_REG  0x3F215044
-#define AUX_MU_IIR_REG  0x3F215048
-#define AUX_MU_LCR_REG  0x3F21504C
-#define AUX_MU_MCR_REG  0x3F215050
-#define AUX_MU_LSR_REG  0x3F215054
-#define AUX_MU_MSR_REG  0x3F215058
-#define AUX_MU_SCRATCH  0x3F21505C
-#define AUX_MU_CNTL_REG 0x3F215060
-#define AUX_MU_STAT_REG 0x3F215064
-#define AUX_MU_BAUD_REG 0x3F215068
+#define GPFSEL1         (uart_baseaddr + 0x00004ul)
+#define GPSET0          (uart_baseaddr + 0x0001Cul)
+#define GPCLR0          (uart_baseaddr + 0x00028ul)
+#define GPPUD           (uart_baseaddr + 0x00094ul)
+#define GPPUDCLK0       (uart_baseaddr + 0x00098ul)
+
+#define AUX_ENABLES     (uart_baseaddr + 0x15004ul)
+#define AUX_MU_IO_REG   (uart_baseaddr + 0x15040ul)
+#define AUX_MU_IER_REG  (uart_baseaddr + 0x15044ul)
+#define AUX_MU_IIR_REG  (uart_baseaddr + 0x15048ul)
+#define AUX_MU_LCR_REG  (uart_baseaddr + 0x1504Cul)
+#define AUX_MU_MCR_REG  (uart_baseaddr + 0x15050ul)
+#define AUX_MU_LSR_REG  (uart_baseaddr + 0x15054ul)
+#define AUX_MU_MSR_REG  (uart_baseaddr + 0x15058ul)
+#define AUX_MU_SCRATCH  (uart_baseaddr + 0x1505Cul)
+#define AUX_MU_CNTL_REG (uart_baseaddr + 0x15060ul)
+#define AUX_MU_STAT_REG (uart_baseaddr + 0x15064ul)
+#define AUX_MU_BAUD_REG (uart_baseaddr + 0x15068ul)
 
 //GPIO14  TXD0 and TXD1
 //GPIO15  RXD0 and RXD1
@@ -31,12 +40,12 @@ extern void dummy ( unsigned int );
 
 //GPIO14  TXD0 and TXD1
 //GPIO15  RXD0 and RXD1
-//------------------------------------------------------------------------
+
 unsigned int uart_lcr ( void )
 {
     return(get32(AUX_MU_LSR_REG));
 }
-//------------------------------------------------------------------------
+
 unsigned char uart_recv ( void )
 {
     while(1)
@@ -45,13 +54,13 @@ unsigned char uart_recv ( void )
     }
     return get32(AUX_MU_IO_REG) & 0xFF;
 }
-//------------------------------------------------------------------------
+
 unsigned int uart_check ( void )
 {
     if(get32(AUX_MU_LSR_REG)&0x01) return(1);
     return(0);
 }
-//------------------------------------------------------------------------
+
 void uart_send (unsigned char c)
 {
     while(1)
@@ -60,7 +69,7 @@ void uart_send (unsigned char c)
     }
     put32(AUX_MU_IO_REG, (unsigned int)c);
 }
-//------------------------------------------------------------------------
+
 void uart_flush ( void )
 {
     while(1)
@@ -68,7 +77,7 @@ void uart_flush ( void )
         if((get32(AUX_MU_LSR_REG)&0x100)==0) break;
     }
 }
-//------------------------------------------------------------------------
+
 void hexstrings ( unsigned int d )
 {
     //unsigned int ra;
@@ -86,15 +95,19 @@ void hexstrings ( unsigned int d )
     }
     uart_send(0x20);
 }
-//------------------------------------------------------------------------
+
 void hexstring ( unsigned int d )
 {
     hexstrings(d);
     uart_send(0x0D);
     uart_send(0x0A);
 }
-//------------------------------------------------------------------------
-void uart_init ( void )
+
+/**
+ * @brief Initialized the hardware and uses a pre-mem identity memory mapping.
+ * 
+ */
+void uart_pre_init ( void )
 {
     unsigned int ra;
 
@@ -118,19 +131,33 @@ void uart_init ( void )
     for(ra=0;ra<150;ra++) dummy(ra);
     put32(GPPUDCLK0,0);
     put32(AUX_MU_CNTL_REG,3);
+
+    print("UART peripheral initialized @ 0x{xl}\r\n", uart_baseaddr);
 }
-//------------------------------------------------------------------------
+
+/**
+ * @brief Initialize the memory mappings to move out of pre-mem
+ * 
+ */
+int uart_init() {
+    // No error checking!
+    uint64_t new_uart_baseaddr = (uint64_t)mmap(UART_PHYSICAL_ADDR, UART_MAPPING_SIZE);
+    if(!new_uart_baseaddr) {
+        print("uart: error: failed to remap IO region\r\n");
+        return -1;
+    }
+    uart_baseaddr = new_uart_baseaddr;
+    print("UART peripheral remapped @ 0x{xl}\r\n", uart_baseaddr);
+    return 0;
+}
+
 void uart_print(char *string) {
     while(*string) {
         uart_send(*string);
         string++;
     }
 }
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
 
-
-//-------------------------------------------------------------------------
 //
 // Copyright (c) 2012 David Welch dwelch@dwelch.com
 //
@@ -140,4 +167,3 @@ void uart_print(char *string) {
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-//-------------------------------------------------------------------------

@@ -4,38 +4,41 @@
 #include <kernel/delay.h>
 #include <kernel/string.h>
 #include <kernel/block.h>
+#include <kernel/mmap.h>
 
-#define SDEMMC_BASE 0x3F300000
+#define SDEMMC_PHYSICAL 0x3F300000
+#define SDEMMC_MAPPING_SIZE 0x10000
+static uint64_t sdemmc_base = SDEMMC_PHYSICAL;
 
 /*
 * SDEMMC Registers
 */
-#define SDEMMC_ARG2 (SDEMMC_BASE + 0x0)
-#define SDEMMC_BLKSIZECNT (SDEMMC_BASE + 0x4)
-#define SDEMMC_ARG1 (SDEMMC_BASE + 0x8)
-#define SDEMMC_CMDTM (SDEMMC_BASE + 0xC)
-#define SDEMMC_RESP0 (SDEMMC_BASE + 0x10)
-#define SDEMMC_RESP1 (SDEMMC_BASE + 0x14)
-#define SDEMMC_RESP2 (SDEMMC_BASE + 0x18)
-#define SDEMMC_RESP3 (SDEMMC_BASE + 0x1C)
-#define SDEMMC_DATA (SDEMMC_BASE + 0x20)
-#define SDEMMC_STATUS (SDEMMC_BASE + 0x24)
-#define SDEMMC_CONTROL0 (SDEMMC_BASE + 0x28)
-#define SDEMMC_CONTROL1 (SDEMMC_BASE + 0x2C)
-#define SDEMMC_INTERRUPT (SDEMMC_BASE + 0x30)
-#define SDEMMC_IRPT_MASK (SDEMMC_BASE + 0x34)
-#define SDEMMC_IRPT_EN (SDEMMC_BASE + 0x38)
-#define SDEMMC_CONTROL2 (SDEMMC_BASE + 0x3C)
-#define SDEMMC_FORCE_IRPT (SDEMMC_BASE + 0x50)
-#define SDEMMC_BOOT_TIMEOUT (SDEMMC_BASE + 0x70)
-#define SDEMMC_DBG_SEL (SDEMMC_BASE + 0x74)
-#define SDEMMC_EXRDFIFO_CFG (SDEMMC_BASE + 0x80)
-#define SDEMMC_EXRDFIFO_EN (SDEMMC_BASE + 0x84)
-#define SDEMMC_TUNE_STEP (SDEMMC_BASE + 0x88)
-#define SDEMMC_TUNE_STEPS_STD (SDEMMC_BASE + 0x8c)
-#define SDEMMC_TUNE_STEPS_DDR (SDEMMC_BASE + 0x90)
-#define SDEMMC_SPI_INT_SPT (SDEMMC_BASE + 0xf0)
-#define SDEMMC_SLOTISR_VER (SDEMMC_BASE + 0xfc)
+#define SDEMMC_ARG2 (sdemmc_base + 0x0ul)
+#define SDEMMC_BLKSIZECNT (sdemmc_base + 0x4ul)
+#define SDEMMC_ARG1 (sdemmc_base + 0x8ul)
+#define SDEMMC_CMDTM (sdemmc_base + 0xCul)
+#define SDEMMC_RESP0 (sdemmc_base + 0x10ul)
+#define SDEMMC_RESP1 (sdemmc_base + 0x14ul)
+#define SDEMMC_RESP2 (sdemmc_base + 0x18ul)
+#define SDEMMC_RESP3 (sdemmc_base + 0x1Cul)
+#define SDEMMC_DATA (sdemmc_base + 0x20ul)
+#define SDEMMC_STATUS (sdemmc_base + 0x24ul)
+#define SDEMMC_CONTROL0 (sdemmc_base + 0x28ul)
+#define SDEMMC_CONTROL1 (sdemmc_base + 0x2Cul)
+#define SDEMMC_INTERRUPT (sdemmc_base + 0x30ul)
+#define SDEMMC_IRPT_MASK (sdemmc_base + 0x34ul)
+#define SDEMMC_IRPT_EN (sdemmc_base + 0x38ul)
+#define SDEMMC_CONTROL2 (sdemmc_base + 0x3Cul)
+#define SDEMMC_FORCE_IRPT (sdemmc_base + 0x50ul)
+#define SDEMMC_BOOT_TIMEOUT (sdemmc_base + 0x70ul)
+#define SDEMMC_DBG_SEL (sdemmc_base + 0x74ul)
+#define SDEMMC_EXRDFIFO_CFG (sdemmc_base + 0x80ul)
+#define SDEMMC_EXRDFIFO_EN (sdemmc_base + 0x84ul)
+#define SDEMMC_TUNE_STEP (sdemmc_base + 0x88ul)
+#define SDEMMC_TUNE_STEPS_STD (sdemmc_base + 0x8cul)
+#define SDEMMC_TUNE_STEPS_DDR (sdemmc_base + 0x90ul)
+#define SDEMMC_SPI_INT_SPT (sdemmc_base + 0xf0ul)
+#define SDEMMC_SLOTISR_VER (sdemmc_base + 0xfcul)
 
 /*
 * SDEMMC Interrupt flags
@@ -606,6 +609,13 @@ static int sd_seek_blk(struct block_dev *dev, unsigned int iblk) {
 }
 
 int sd_initialize(struct block_dev *dev) {
+    sdemmc_base = (uint64_t)mmap(SDEMMC_PHYSICAL, SDEMMC_MAPPING_SIZE);
+    if(!sdemmc_base) {
+        print("sd: error: failed to create io mapping!\r\n");
+        return -1;
+    }
+    print("SD EMMC peripheral mapped @ 0x{xl}\r\n", sdemmc_base);
+
     if(sd_reset() != 0) {
         print("SD card initialization failed!\r\n");
         return -1;

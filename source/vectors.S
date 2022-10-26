@@ -75,10 +75,10 @@ vectors:
 	ventry	_handle_serror						// Error EL1h
 
 	# From lower EL (64-bit)
-	ventry	_handle_unknown_exception			// Synchronous 64-bit EL0
-	ventry	_handle_unknown_exception			// IRQ 64-bit EL0
-	ventry	_handle_unknown_exception			// FIQ 64-bit EL0
-	ventry	_handle_unknown_exception			// Error 64-bit EL0
+	ventry	_handle_sync_el0					// Synchronous EL0
+	ventry	_handle_irq_el0						// IRQ EL0
+	ventry	_handle_fiq_el0						// FIQ EL0
+	ventry	_handle_serror_el0					// Error EL0
 
 	# From lower EL (32-bit)
 	ventry	_handle_unknown_exception			// Synchronous 32-bit EL0
@@ -98,6 +98,18 @@ _handle_fiq:
 
 _handle_serror:
 	kernel_call handle_exception_serror
+
+_handle_sync_el0:
+	kernel_call handle_exception_sync_el0
+
+_handle_irq_el0:
+	kernel_call handle_exception_irq_el0
+
+_handle_fiq_el0:
+	kernel_call handle_exception_fiq_el0
+
+_handle_serror_el0:
+	kernel_call handle_exception_serror_el0
 
 _handle_unknown_exception:
 	kernel_call handle_unknown_exception

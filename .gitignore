@@ -1,6 +1,7 @@
 examples/
 documentation/
 crosscompiler/
+toolchain/
 build/
 kernel.img
 kernel.map

@@ -77,7 +77,8 @@ void handle_exception_sync()
 		panic();
 		break;
 	default:
-		print("Unidentified exception.\r\n");	
+		print("Unidentified kernel exception.\r\n");	
+		print("See D13-5347 in ARM Reference Manual\r\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	}
@@ -99,6 +100,49 @@ void handle_exception_fiq()
 void handle_exception_serror()
 {
 	print("## SERROR EXCEPTION ##\r\n");
+	panic();
+}
+
+void handle_exception_sync_el0()
+{
+	uint64_t esr = read_system_reg(ESR_EL1);
+	uint64_t far = read_system_reg(FAR_EL1);
+	unsigned int error_class = (esr & (0b111111 << 26)) >> 26;
+
+	print("## EL0 SYNC EXCEPTION ##\r\n");
+	switch(error_class) {
+	case 7:
+		print("Invalid vector instruction.\r\n");
+		print_esr_and_far(esr, far, error_class);
+		panic();
+	case 36:
+		// 0b100101: Data Abort taken without change in exception level.
+		print("Invalid memory access from userspace!\r\n");
+		print_esr_and_far(esr, far, error_class);
+		panic();
+		break;
+	default:
+		print("Unidentified exception in userspace.\r\n");
+		print("See D13-5347 in ARM Reference Manual\r\n");
+		print_esr_and_far(esr, far, error_class);
+		panic();
+	}
+}
+
+void handle_exception_irq_el0() {
+	print("## UNHANDLED EL0 IRQ EXCEPTION ##\r\n");
+	panic();
+}
+
+void handle_exception_fiq_el0()
+{
+	print("## UNHANDLED EL0 FIQ EXCEPTION ##\r\n");
+	panic();
+}
+
+void handle_exception_serror_el0()
+{
+	print("## EL0 SERROR EXCEPTION ##\r\n");
 	panic();
 }
 

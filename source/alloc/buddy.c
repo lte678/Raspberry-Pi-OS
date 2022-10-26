@@ -300,6 +300,12 @@ static struct mem_blk *next_free_block(int size) {
 
 
 void* kmalloc(unsigned long size, uint32_t flags) {
+    if(flags & ALLOC_PAGE_ALIGN) {
+        // An easy way to ensure alignment with buddy blocks is to just make sure the size is at least one page.
+        if(size < PAGE_SIZE) {
+            size = PAGE_SIZE;
+        }
+    }
     int i = 0;
     while(size_to_bytes(i) < size) {
         i++;
@@ -339,6 +345,45 @@ void free(void* memory) {
     print("Attempted to free invalid pointer!\r\n");
 }
 
+
+void* kmalloc_largest_available(unsigned long size, uint32_t flags, unsigned long *allocated_size) {
+    if(flags & ALLOC_PAGE_ALIGN) {
+        // An easy way to ensure alignment with buddy blocks is to just make sure the size is at least one page.
+        if(size < PAGE_SIZE) {
+            size = PAGE_SIZE;
+        }
+    }
+    int i = 0;
+    while(size_to_bytes(i) < size) {
+        i++;
+    }
+    struct mem_blk *b;
+    do {
+        if(i == 0) {
+            // The system is completely out of memory!
+            return 0;
+        }
+        b = next_free_block(i);
+        i--;
+        // A block was not found
+    } while(b == 0);
+    remove_from_free_list(b);
+    b->allocated = 1;
+    
+    *allocated_size = size_to_bytes(i + 1);
+
+    #ifdef DEBUG_BUDDY
+    print("Found free {ul} byte block (level: {i}) at addr {p}\r\n", size_to_bytes(i), i, b->start_addr);
+    #endif
+
+    // Zero region if flag is set
+    if(flags & ALLOC_ZERO_INIT) {
+        memset(0, b->start_addr, *allocated_size);
+    }
+
+    return b->start_addr;
+}
+ 
 
 int init_buddy_allocator() {
     // Creates superblock starting at address 0

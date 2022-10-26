@@ -3,6 +3,7 @@
 #include <kernel/alloc.h>
 #include <kernel/elf.h>
 #include <kernel/process.h>
+#include <kernel/pagetable.h>
 
 
 int monoterm_elfdump(int argc, char *argv[]) {
@@ -51,6 +52,7 @@ int monoterm_elfdump(int argc, char *argv[]) {
     }
     print("\r\n");
     print("    Flags:           0x{x}\r\n", hdr->flags);
+    print("    Entry Point:     0x{x}\r\n", hdr->entry_point);
     print("    Program Headers: {i}\r\n", (int)hdr->pheader_num);
     print("    Section Headers: {i}\r\n", (int)hdr->sheader_num);
 
@@ -98,6 +100,7 @@ int monoterm_run(int argc, char *argv[]) {
         return 1;
     }
 
+    print("Creating process...\r\n");
     // Create the process
     struct process *p = allocate_process();
     if(!p) {
@@ -112,6 +115,18 @@ int monoterm_run(int argc, char *argv[]) {
         print("Failed to create process!\r\n");
         return 1;
     }
+
+    print("Created process. Running...\r\n");
+    print("Entry point @ {p}\r\n", p->process_entry_point);
+    print("First command: {x}\r\n", *(uint32_t*)p->process_entry_point);
+
+    page_table_print(kernel_page_table);
+    switch_to_process(p);
+
+
+    free_process_memory(p);
+
+    print("Freed process memory\r\n");
 
     return 0;
 }

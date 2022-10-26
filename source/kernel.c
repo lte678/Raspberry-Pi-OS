@@ -7,6 +7,8 @@
 #include <kernel/alloc.h>
 #include <kernel/inode.h>
 #include <kernel/pagetable.h>
+#include <kernel/address_space.h>
+#include <kernel/mmap.h>
 
 
 #include "alloc/buddy.h"
@@ -34,8 +36,12 @@ void kernel_entry_point(void) {
     //time = read_system_timer();
     //set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
 
+    // Populate kernel_page_table pointer
+    page_table_init();
+
     // Uart
-    uart_init();
+    uart_pre_init();
+    print("Stack address: {xl}\r\n", read_stack_pointer());
     print("Booting LXE...\r\n");
     print("Developed by Leon Teichroeb :)\r\n");
 
@@ -57,7 +63,23 @@ void kernel_entry_point(void) {
     if(init_buddy_allocator()) {
         panic();
     }
-
+    
+    struct address_mapping *id_mapping;
+    if(!init_kernel_address_space_struct(&id_mapping)) {
+        print("Failed to allocate initial address space.");
+        panic();
+    }
+    // We can now preform memory mappings. Migrate to new UART mappings before we remove the identity maps.
+    if(uart_init()) {
+        panic();
+    }
+    // After this point, physical addresses no longer work!
+    if(unmap_memory_region(kernel_address_space, id_mapping)) {
+        print("Failed to unmap identity mapping!\r\n");
+        panic();
+    }
+    print("Unmapped identity mapping.\r\n");
+    
     struct block_dev *primary_sd = alloc_block_dev();
     if(sd_initialize(primary_sd)) {
         print("SD device is required to mount root directory!\r\n");
@@ -69,9 +91,6 @@ void kernel_entry_point(void) {
         panic();
     }
     g_root_inode = root_part->root_node;
-
-    // TODO: Deal with symbol relocation issues
-    //print("Kernel page table address: {p}\r\n", &physical_kernel_pgt_addr);
 
     // Start monolithic kernel console
     monoterm_start();

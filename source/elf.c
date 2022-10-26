@@ -165,6 +165,10 @@ int load_elf(struct inode* elf_file, struct elf_data *elf) {
  * @return 0 for success 
  */
 int elf_create_process(struct elf_data *elf, struct process *p) {
+    // Set the processes entry point
+    p->process_entry_point = (void*)elf->header.entry_point;
+
+    // Create memory mappings and allocate RAM
     for(int i = 0; i < elf->header.pheader_num; i++) {
         struct elf_program_header *hdr = &(elf->pheader[i]);
         // Map this header to memory
@@ -175,31 +179,51 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
         // this means that the target virtual address should also be
         // offset by file_page_offset
 
-        uint64_t map_to = hdr->proc_address - file_page_offset;
-        if(map_to % PAGE_SIZE) {
+        uint64_t map_from = hdr->proc_address - file_page_offset;
+        if(map_from % PAGE_SIZE) {
             // ELF segments not page aligned!
             // TODO: Free all of the process memory allocated up to now.
             return 1;
         }
 
         // Allocate memory. This returns a kernel virtual address.
-        void* header_memory = kmalloc(hdr->proc_size, ALLOC_ZERO_INIT);
+        void* header_memory = kmalloc(hdr->proc_size, ALLOC_ZERO_INIT | ALLOC_PAGE_ALIGN);
+        if(!header_memory) {
+            print("Failed to allocate process memory!\r\n");
+            return 1;
+        }
+
+        // Append memory region to the processes allocation lists
+        struct process_memory_handle *al = kmalloc(sizeof(struct process_memory_handle), 0);
+        if(!al) {
+            free(header_memory);
+            free_process_memory(p);
+            return 1;
+        }
+        struct process_memory_handle *old_al = p->allocated_list;
+        al->next = old_al;
+        al->memory = header_memory;
+        p->allocated_list = al;
+
         // Translate to physical address
-        // TODO: Add kernel page table address.
-        uint64_t map_from = page_table_virtual_to_physical(0, (uint64_t)header_memory);
-        if(!map_from) {
+        uint64_t map_to = page_table_virtual_to_physical(kernel_page_table, (uint64_t)header_memory);
+        if(!map_to) {
             return 1;
         }
 
         uint64_t section_size = round_up_to_page(hdr->proc_size);
 
-        print("Mapping {x} bytes from virtual address {p} to physical address {p}\r\n", (uint32_t)section_size, map_to, map_from);
+        print("Mapping {x} bytes from virtual address {p} to physical address {p}\r\n", (uint32_t)section_size, map_from, map_to);
 
         // Attemp to perform mapping
-        if(map_memory_region(p->addr_space, map_to, map_from, section_size)) {
+        if(map_memory_region(p->addr_space, map_from, map_to, section_size)) {
             print("Failed to map memory region for ELF file\r\n");
             return 1;
         }
+
+        // Copy data
+        memcpy((char*)header_memory + file_page_offset, elf->node->data + hdr->file_address, hdr->file_size);
     }
+
     return 0;
 }
