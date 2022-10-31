@@ -15,8 +15,8 @@
 struct inode;
 
 struct inode_ops {
-    int (*read_data)(struct inode *n);
-    int (*write_data)(struct inode *n);
+    int (*fetch_data)(struct inode *n);
+    int (*push_data)(struct inode *n);
 };
 
 
@@ -27,6 +27,8 @@ struct inode {
     void *fs_data;
     // Contains file data.
     void *data;
+    // Points to the byte in the file we are reading next
+    uint64_t seek_address;
     unsigned int data_size;
     // Struct is only not-null for directories.
     struct inode *child_nodes;
@@ -40,8 +42,10 @@ struct inode {
 
 
 struct inode *alloc_inode();
-int inode_read_data(struct inode *n);
+int inode_fetch_data(struct inode *n);
 int inode_write_data(struct inode *n);
+int inode_read(struct inode *node, void* dest, uint32_t n);
+int inode_is_file(struct inode *node);
 void inode_insert_child(struct inode *parent, struct inode *child);
 struct inode *inode_from_path(struct inode *root, char *path);
 void inode_print(struct inode *n);

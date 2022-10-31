@@ -28,7 +28,7 @@ int monoterm_ls(int argc, char *argv[]) {
         return 0;
     }
     if(folder->state & INODE_STATE_NEW) {
-        if(inode_read_data(folder)) {
+        if(inode_fetch_data(folder)) {
             return 1;
         }
     }
@@ -70,7 +70,7 @@ int monoterm_cat(int argc, char *argv[]) {
         print("Target is a directory.\r\n");
         return 1;
     }
-    inode_read_data(file);
+    inode_fetch_data(file);
 
     if(!(file->state & INODE_STATE_VALID)) {
         print("Failed to read file.\r\n");

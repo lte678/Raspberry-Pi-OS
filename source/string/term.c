@@ -3,7 +3,7 @@
 // Terminal control commands
 
 void term_set_cursor(int x, int y) {
-    print("\x1B[{i};{i}H", x, y);
+    print("\x1B[{i};{i}H", y, x);
 }
 
 void term_set_cursor_column(int x) {
@@ -17,6 +17,11 @@ void term_set_cursor_row(int x) {
 
 void term_clear() {
     print("\x1B[2J");
+}
+
+void term_getrows() {
+    // TODO
+    return 10;
 }
 
 void term_set_bold() {

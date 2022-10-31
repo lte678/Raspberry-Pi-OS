@@ -13,20 +13,42 @@ struct inode *alloc_inode() {
     return n;
 }
 
-int inode_read_data(struct inode *n) {
-    if(!n->ops.read_data) {
+int inode_read(struct inode *node, void* dest, uint32_t n) {
+    // Make sure to fetch data first, if we have not done that yet
+    if(node->state & INODE_STATE_NEW) {
+        if(inode_fetch_data(node)) {
+            return 0;
+        }
+    }
+    // Max readable
+    int to_read = node->data_size - node->seek_address;
+    if(n != 0 && n < to_read) {
+        to_read = n;
+    }
+
+    memcpy(dest, (char*)node->data + node->seek_address, to_read);
+    node->seek_address += to_read;
+    return to_read;
+}
+
+int inode_fetch_data(struct inode *n) {
+    if(!n->ops.fetch_data) {
         print("Error: ops.read_data not defined\r\n");
         return -1;
     }
-    return n->ops.read_data(n);
+    return n->ops.fetch_data(n);
 }
 
-int inode_write_data(struct inode *n) {
-    if(!n->ops.write_data) {
+int inode_push_data(struct inode *n) {
+    if(!n->ops.push_data) {
         print("Error: ops.write_data not defined\r\n");
         return -1;
     }
-    return n->ops.write_data(n);
+    return n->ops.push_data(n);
+}
+
+int inode_is_file(struct inode *node) {
+    return node->state & INODE_TYPE_FILE;
 }
 
 void inode_insert_child(struct inode *parent, struct inode *child) {
@@ -83,7 +105,7 @@ struct inode *inode_from_path(struct inode *root, char *path) {
         token[next_slash - path_index] = 0;
 
         if(curr_node->state & INODE_STATE_NEW) {
-            if(inode_read_data(curr_node)) {
+            if(inode_fetch_data(curr_node)) {
                 return 0;
             }
         }

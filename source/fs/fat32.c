@@ -213,7 +213,7 @@ static uint8_t parse_directory_entry(struct inode *result, uint8_t *entry_row, u
 }
 
 
-// This is not a real inode operation. It is called by the op "inode_read_data" when the inode is a directory.
+// This is not a real inode operation. It is called by the op "inode_fetch_data" when the inode is a directory.
 static int fat32_inode_read_directory(struct inode *n) {
     struct fat32_inode_data *n_data = (struct fat32_inode_data*)n->fs_data;
     uint32_t n_cluster = n_data->cluster;
@@ -263,7 +263,7 @@ static int fat32_inode_read_directory(struct inode *n) {
 /*
  * Allocates memory for inode (if unallocated and file), and reads the file/folder contents
  */
-static int fat32_inode_read_data(struct inode *n) {
+static int fat32_inode_fetch_data(struct inode *n) {
     struct fat32_inode_data *n_data = (struct fat32_inode_data*)n->fs_data;
     uint32_t n_cluster = n_data->cluster;
     struct fat32_disk *partition = n_data->partition;
@@ -320,8 +320,8 @@ void print_bpb(struct bios_parameter_block *bpb) {
 
 
 static struct inode_ops fat32_inode_ops = {
-    .read_data = fat32_inode_read_data,
-    .write_data = 0
+    .fetch_data = fat32_inode_fetch_data,
+    .push_data = 0
 };
 
 

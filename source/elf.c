@@ -123,7 +123,7 @@ int load_elf(struct inode* elf_file, struct elf_data *elf) {
         print("Target is a directory.\r\n");
         return 1;
     }
-    inode_read_data(elf_file);
+    inode_fetch_data(elf_file);
 
     if(!(elf_file->state & INODE_STATE_VALID)) {
         print("Failed to read file.\r\n");
