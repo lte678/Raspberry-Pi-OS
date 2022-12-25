@@ -96,24 +96,21 @@ void switch_to_user_thread() {
  * @param terminating True if the current process should be terminated.
  */
 void switch_to_process(struct process *p, bool_t terminating) {
-    // Store old context
-    store_context(kernel_curr_process->kern_thread);
-    kernel_curr_process->kern_thread->link_reg = (uint64_t)__builtin_return_address(0);
+    #ifdef DEBUG_THREADING
+    print("Switching to process with PID {d}\r\n", p->pid);
+    #endif
 
+     // Maintain changes in process structs
     //print_thread_context(kernel_curr_process->kern_thread);
     if(terminating) {
         kernel_curr_process->state = PROCESS_STATE_TERMINATED;
     } else {
         kernel_curr_process->state = PROCESS_STATE_WAITING;
     }
-    
-    #ifdef DEBUG_THREADING
-    print("Switching to process with PID {d}\r\n", p->pid);
-    #endif
 
-    // Load new context
+    struct process *prev_proc = kernel_curr_process;
     kernel_curr_process = p;
     kernel_curr_process->state = PROCESS_STATE_RUNNING;
-    //write_reg("pstate", kernel_curr_process->kern_thread->pstate);
-    load_context(kernel_curr_process->kern_thread);
+
+    switch_context(prev_proc->kern_thread, kernel_curr_process->kern_thread);
 }

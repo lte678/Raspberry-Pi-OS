@@ -22,7 +22,6 @@ struct kthread {
 
 struct kthread *allocate_kthread();
 
-void store_context(struct kthread *t);
-void load_context(struct kthread *t);
+void switch_context(struct kthread *from, struct kthread *to);
 void print_thread_context(struct kthread *t);
 void switch_to_thread(struct kthread *t);

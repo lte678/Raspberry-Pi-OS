@@ -127,10 +127,9 @@ int monoterm_run(int argc, char *argv[]) {
     // page_table_print(kernel_page_table);
     switch_to_process(p, false);
 
-
+    // TODO: Do this in a scheduler garbage collection method
     free_process_memory(p);
 
-    print("Freed process memory\r\n");
 
     return 0;
 }
