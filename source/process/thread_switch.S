@@ -1,0 +1,49 @@
+# void store_context(struct kthread *t);
+.globl store_context
+store_context:
+	stp	x0, x1,   [x0, #16 * 0]
+	stp	x2, x3,   [x0, #16 * 1]
+	stp	x4, x5,   [x0, #16 * 2]
+	stp	x6, x7,   [x0, #16 * 3]
+	stp	x8, x9,   [x0, #16 * 4]
+	stp	x10, x11, [x0, #16 * 5]
+	stp	x12, x13, [x0, #16 * 6]
+	stp	x14, x15, [x0, #16 * 7]
+	stp	x16, x17, [x0, #16 * 8]
+	stp	x18, x19, [x0, #16 * 9]
+	stp	x20, x21, [x0, #16 * 10]
+	stp	x22, x23, [x0, #16 * 11]
+	stp	x24, x25, [x0, #16 * 12]
+	stp	x26, x27, [x0, #16 * 13]
+	stp	x28, x29, [x0, #16 * 14]
+    mov x8, sp
+	str	x8,       [x0, #16 * 15]
+	mrs x8, NZCV
+	str x8,       [x0, #16 * 16]
+    ret
+
+# void load_context(struct kthread *t);
+.globl load_context
+load_context:
+    ldp	x8, x30,  [x0, #16 * 15]
+    mov sp, x8
+	ldr x8,	      [x0, #16 * 16]
+	msr NZCV,     x8
+
+    ldr	x1,       [x0, #8]
+	ldp	x2, x3,   [x0, #16 * 1]
+	ldp	x4, x5,   [x0, #16 * 2]
+	ldp	x6, x7,   [x0, #16 * 3]
+	ldp	x8, x9,   [x0, #16 * 4]
+	ldp	x10, x11, [x0, #16 * 5]
+	ldp	x12, x13, [x0, #16 * 6]
+	ldp	x14, x15, [x0, #16 * 7]
+	ldp	x16, x17, [x0, #16 * 8]
+	ldp	x18, x19, [x0, #16 * 9]
+	ldp	x20, x21, [x0, #16 * 10]
+	ldp	x22, x23, [x0, #16 * 11]
+	ldp	x24, x25, [x0, #16 * 12]
+	ldp	x26, x27, [x0, #16 * 13]
+	ldp	x28, x29, [x0, #16 * 14]
+# Jumps to new link register value
+    ret

@@ -6,5 +6,7 @@
 
 #define read_stack_pointer() ({ uint64_t ret; asm volatile ("mov %0, sp;" : "=r"(ret) : : ); ret; })
 
+#define read_reg(reg) ({ uint64_t ret; asm volatile ("mov %0, " #reg ";" : "=r"(ret) : : ); ret; })
+
 void put32(uint64_t addr, uint32_t data);
 uint32_t get32(uint64_t addr);

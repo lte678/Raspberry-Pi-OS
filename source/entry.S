@@ -15,7 +15,12 @@ master:
 
 	ldr	x0, =HCR_VALUE
 	msr	hcr_el2, x0
-	
+
+    // Control SIMD and FP instruction availability
+    ldr x0, =CPTR_VALUE
+    msr cptr_el2, x0
+    msr cpacr_el1, x0
+
 	ldr x0, =SPSR_VALUE
     msr spsr_el2, x0
 

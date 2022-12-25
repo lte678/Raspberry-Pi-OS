@@ -9,6 +9,7 @@
 #include <kernel/pagetable.h>
 #include <kernel/address_space.h>
 #include <kernel/mmap.h>
+#include <kernel/process.h>
 
 
 #include "alloc/buddy.h"
@@ -22,6 +23,7 @@ void print_execution_level() {
     uint32_t execution_level = read_system_reg(CurrentEL) >> 2;
     print("Executing in EL{u}\r\n", execution_level);
 }
+
 
 void kernel_entry_point(void) {
     //struct bios_parameter_block bpb;
@@ -92,7 +94,15 @@ void kernel_entry_point(void) {
     }
     g_root_inode = root_part->root_node;
 
+    // Create main kernel thread
+    kernel_curr_process = allocate_process();
+    process_list_head = kernel_curr_process;
+    if(!kernel_curr_process) {
+        print("Failed to allocate main kernel process1\r\n");
+        panic();
+    }
+    kernel_curr_process->state = PROCESS_STATE_RUNNING;
+
     // Start monolithic kernel console
     monoterm_start();
 }
-

@@ -181,3 +181,60 @@ int atoi(const char* string, int* result) {
     *result = res;
     return 0;
 }
+
+/**
+ * @brief Returns 1 if the char describes a letter, number or symbol.
+ * 
+ * @param c 
+ * @return int 
+ */
+int is_character(char c) {
+    if(c >= 32 && c < 127) {
+        return 1;
+    } 
+    return 0;
+}
+
+/**
+ * @brief Returns 1 if the char is a letter or number.
+ * 
+ * @param c 
+ * @return int 
+ */
+int is_alphanumeric(char c) {
+    if(c >= '0' && c <= '9') {
+        return 1;
+    } 
+    if(c >= 'a' && c <= 'z') {
+        return 1;
+    }
+    if(c >= 'A' && c <= 'Z') {
+        return 1;
+    }
+    return 0;
+}
+
+
+/**
+ * @brief Determines if the character terminates a
+ * https://en.wikipedia.org/wiki/ANSI_escape_code#CSIsection
+ * 
+ * @param c 
+ * @return int 
+ */
+int is_csi_sequence_terminator(char c) {
+    char* matches = "@[\\]^_`{|}~";
+    while(*matches) {
+        if(c == *matches) {
+            return 1;
+        }
+        matches++;
+    }
+    if(c >= 'a' && c <= 'z') {
+        return 1;
+    }
+    if(c >= 'A' && c <= 'Z') {
+        return 1;
+    }
+    return 0;
+}

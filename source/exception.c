@@ -2,7 +2,8 @@
 #include <kernel/register.h>
 #include <kernel/timer.h>
 #include <kernel/panic.h>
-
+#include <kernel/term.h>
+#include <kernel/syscall.h>
 
 #define INT_BASE 0x3F00B000
 
@@ -24,6 +25,10 @@
 
 extern int vectors;
 
+
+void apply_exception_formatting() {
+	term_set_color(COLORCODE_WARNING);
+}
 
 void unmask_exception_class(uint64_t mask) {
 	// Debug, system error, irq, fiq mask bits 
@@ -49,17 +54,19 @@ static void print_esr_and_far(uint64_t esr, uint64_t far, unsigned int error_cla
 	print("ELR: {xl}\r\n", read_system_reg(ELR_EL1));
 	// Exception syndrome register
 	print("ESR: {xl}    FAR: {xl}\r\n", esr, far);
-	print("EC: {u}    IL: {u}    ISS: {u}\r\n", error_class, (esr >> 25) & 1, esr & 0x1FFFFFF);
+	print("EC: {u}    IL: {u}    ISS(23): {u}    ISS: {u}\r\n", error_class, (esr >> 25) & 1, (esr & 0x1000000) > 24, esr & 0xFFFFFF);
 }
 
 void handle_unknown_exception()
 {
+	apply_exception_formatting();
 	print("## UNKNOWN EXCEPTION ##\r\n");
 	panic();
 }
 
 void handle_exception_sync()
 {
+	apply_exception_formatting();
 	uint64_t esr = read_system_reg(ESR_EL1);
 	uint64_t far = read_system_reg(FAR_EL1);
 	unsigned int error_class = (esr & (0b111111 << 26)) >> 26;
@@ -85,43 +92,51 @@ void handle_exception_sync()
 }
 
 void handle_exception_irq() {
+	apply_exception_formatting();
 	print(".");
 	// TODO: Allow us to register interrupt handlers.
 	uint64_t time = read_system_timer();
 	set_system_timer_interrupt((time + 1000000) & 0xFFFFFFFF);
 }
 
-void handle_exception_fiq()
-{
+void handle_exception_fiq() {
+	apply_exception_formatting();
 	print("## UNHANDLED FIQ EXCEPTION ##\r\n");
 	panic();
 }
 
-void handle_exception_serror()
-{
+void handle_exception_serror() {
+	apply_exception_formatting();
 	print("## SERROR EXCEPTION ##\r\n");
 	panic();
 }
 
-void handle_exception_sync_el0()
-{
+uint64_t handle_exception_sync_el0(uint64_t syscall, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6) {
 	uint64_t esr = read_system_reg(ESR_EL1);
 	uint64_t far = read_system_reg(FAR_EL1);
 	unsigned int error_class = (esr & (0b111111 << 26)) >> 26;
 
-	print("## EL0 SYNC EXCEPTION ##\r\n");
 	switch(error_class) {
 	case 7:
+		apply_exception_formatting();
+		print("## EL0 SYNC EXCEPTION ##\r\n");
 		print("Invalid vector instruction.\r\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	case 36:
 		// 0b100101: Data Abort taken without change in exception level.
+		apply_exception_formatting();
+		print("## EL0 SYNC EXCEPTION ##\r\n");
 		print("Invalid memory access from userspace!\r\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 		break;
+	case 21:
+		// Syscall
+		return handle_syscall(syscall, a1, a2, a3, a4, a5, a6);
 	default:
+		apply_exception_formatting();
+		print("## EL0 SYNC EXCEPTION ##\r\n");
 		print("Unidentified exception in userspace.\r\n");
 		print("See D13-5347 in ARM Reference Manual\r\n");
 		print_esr_and_far(esr, far, error_class);
@@ -130,18 +145,19 @@ void handle_exception_sync_el0()
 }
 
 void handle_exception_irq_el0() {
+	apply_exception_formatting();
 	print("## UNHANDLED EL0 IRQ EXCEPTION ##\r\n");
 	panic();
 }
 
-void handle_exception_fiq_el0()
-{
+void handle_exception_fiq_el0() {
+	apply_exception_formatting();
 	print("## UNHANDLED EL0 FIQ EXCEPTION ##\r\n");
 	panic();
 }
 
-void handle_exception_serror_el0()
-{
+void handle_exception_serror_el0() {
+	apply_exception_formatting();
 	print("## EL0 SERROR EXCEPTION ##\r\n");
 	panic();
 }

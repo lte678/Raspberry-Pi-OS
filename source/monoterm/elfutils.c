@@ -100,7 +100,6 @@ int monoterm_run(int argc, char *argv[]) {
         return 1;
     }
 
-    print("Creating process...\r\n");
     // Create the process
     struct process *p = allocate_process();
     if(!p) {
@@ -116,12 +115,17 @@ int monoterm_run(int argc, char *argv[]) {
         return 1;
     }
 
-    print("Created process. Running...\r\n");
-    print("Entry point @ {p}\r\n", p->process_entry_point);
-    print("First command: {x}\r\n", *(uint32_t*)p->process_entry_point);
+    // Put process into linked list
+    p->next = process_list_head;
+    process_list_head->prev = p;
+    process_list_head = p;
 
-    page_table_print(kernel_page_table);
-    switch_to_process(p);
+    // print("Created process. Running...\r\n");
+    // print("Entry point @ {p}\r\n", p->process_entry_point);
+    // print("First command: {x}\r\n", *(uint32_t*)p->process_entry_point);
+
+    // page_table_print(kernel_page_table);
+    switch_to_process(p, false);
 
 
     free_process_memory(p);

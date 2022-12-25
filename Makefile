@@ -7,8 +7,9 @@
 
 # The toolchain to use. arm-none-eabi works, but there does exist 
 # arm-bcm2708-linux-gnueabi.
-#ARMGNU ?= ./crosscompiler/bin/aarch64-none-elf
-ARMGNU ?= ./toolchain/build/bin/aarch64-elf
+# ARMGNU ?= ./crosscompiler/bin/aarch64-none-elf
+# OS specific toolchain
+ARMGNU ?= ./toolchain/build/bin/aarch64-elf-lxe
 #ARMGNU ?= arm-none-eabi
 
 # The intermediate directory for compiled object files.
@@ -30,12 +31,12 @@ MAP = kernel.map
 LINKER = kernel.ld
 
 # Dont use glib
-OPTIONS = # -DDEBUG_BUDDY -DDEBUG_SD
+OPTIONS = -DTRACE_SYSCALLS # -DDEBUG_BUDDY -DDEBUG_SD 
 CFLAGS = -mgeneral-regs-only -mcmodel=large\
 	-Wall -Og -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files
-FOLDERS := fs disk monoterm alloc memory dev string process
+FOLDERS := fs disk monoterm alloc memory dev string process syscalls
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.
@@ -101,6 +102,9 @@ debug:
 		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
 		-S -gdb tcp::9000 \
 		-kernel kernel.img -drive file=test.img,if=sd,format=raw
+
+mount_loopfs:
+	mount -o loop test.img /mnt/
 
 # Rule to clean files.
 clean : 
