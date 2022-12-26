@@ -181,7 +181,7 @@ int page_table_unmap_address(uint64_t* root_table, uint64_t va, uint64_t size) {
         // Page table level
         int i = 0;
         uint64_t* current_table = root_table;
-        while(i < PAGE_TABLE_LEVELS) {
+        while(i <= PAGE_TABLE_LEVELS) {
             uint16_t table_index = address_index(current_address, i);
             if(is_leaf_entry(current_table[table_index], i)) {
                 // Page table leaf node that we want to remove

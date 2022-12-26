@@ -5,6 +5,7 @@
 #include <kernel/address_space.h>
 #include <kernel/register.h>
 #include <kernel/print.h>
+#include <kernel/panic.h>
 #include <init_sysregs.h>
 
 
@@ -69,6 +70,39 @@ void free_process_memory(struct process *p) {
 }
 
 
+void remove_process_mappings(struct process *p) {
+    struct address_mapping *i = p->addr_space->mappings;
+    while(i) {
+        if(unmap_memory_region(p->addr_space, i)) {
+            print("Unable to unmap memory region, kernel address space has been corrupted!\r\n");
+            panic();
+            return;
+        }
+        i = i->next;
+    }
+}
+
+
+/**
+ * @brief Call on terminated processes. Removes all allocations, mappings and frees structs.
+ * 
+ * @param p The process to terminate.
+ */
+void destroy_process(struct process *p) {
+    free_process_memory(p);
+    remove_process_mappings(p);
+    free(p->kern_thread);
+    free(p->user_thread);
+    struct address_mapping *i = p->addr_space->mappings;
+    while(i) {
+        struct address_mapping *next_i = i->next;
+        free(i);
+        i = next_i;
+    }
+    free(p->addr_space);
+}
+
+
 void switch_to_user_thread() {
     #ifdef DEBUG_THREADING
     print("Switching to user thread\r\n");
@@ -113,4 +147,87 @@ void switch_to_process(struct process *p, bool_t terminating) {
     kernel_curr_process->state = PROCESS_STATE_RUNNING;
 
     switch_context(prev_proc->kern_thread, kernel_curr_process->kern_thread);
+}
+
+
+void *new_process_memory_region(struct process *p, uint64_t size) {
+    // Allocate memory. This returns a kernel virtual address.
+    void* header_memory = kmalloc(size, ALLOC_ZERO_INIT | ALLOC_PAGE_ALIGN);
+    if(!header_memory) {
+        print("Failed to allocate process memory!\r\n");
+        return 0;
+    }
+
+    struct process_memory_handle *al = kmalloc(sizeof(struct process_memory_handle), 0);
+    if(!al) {
+        free(header_memory);
+        free_process_memory(p);
+        return 0;
+    }
+    struct process_memory_handle *old_al = p->allocated_list;
+    al->next = old_al;
+    al->memory = header_memory;
+    p->allocated_list = al;
+    return header_memory;
+}
+
+
+void *new_mapped_process_memory(struct process *p, uint64_t target_addr, uint64_t size) {
+    // Append memory region to the processes allocation lists
+    void* new_mem = new_process_memory_region(p, size);
+    if(!new_mem) {
+        return 0;
+    }
+
+    if(map_memory_region_virt(p->addr_space, target_addr, (uint64_t)new_mem, size)) {
+        return 0;
+    }
+    return new_mem;
+}
+
+
+/**
+ * @brief Prints all process information
+ * 
+ * @param p the process
+ */
+void print_process(struct process *p) {
+    print("--- Process with PID {d} ---\r\n", p->pid);
+    const char* state = "unknown";
+    switch(p->state) {
+    case PROCESS_STATE_NEW:
+        state = "new";
+        break;
+    case PROCESS_STATE_RUNNING:
+        state = "running";
+        break;
+    case PROCESS_STATE_TERMINATED:
+        state = "terminated";
+        break;
+    case PROCESS_STATE_WAITING:
+        state = "waiting";
+        break;
+    }
+    print("State      :{s}\r\n", state);
+
+    print("User Thread\r\n");
+    print("  PC       :0x{xl}\r\n", p->user_thread->link_reg);
+    print("  Stack    :0x{xl}\r\n", p->user_thread->sp);
+    print("  Stk Size :0x{xl}\r\n", p->user_thread->stack_size);
+
+    print("Kernel Thread\r\n");
+    print("  PC       :0x{xl}\r\n", p->kern_thread->link_reg);
+    print("  Stack    :0x{xl}\r\n", p->kern_thread->sp);
+    print("  Stk Size :0x{xl}\r\n", p->kern_thread->stack_size);
+
+    uint32_t nr_of_allocations = 0;
+    for(struct process_memory_handle *m = p->allocated_list; m; m=m->next) {
+        nr_of_allocations++;
+    }
+    print("Allocations:{d}\r\n", nr_of_allocations);
+
+    print("Mappings\r\n");
+    for(struct address_mapping *m = p->addr_space->mappings; m; m=m->next) {
+        print("  0x{xl} to 0x{xl}\r\n", m->vaddress, m->paddress);
+    }
 }

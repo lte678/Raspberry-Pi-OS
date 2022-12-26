@@ -157,47 +157,6 @@ int load_elf(struct inode* elf_file, struct elf_data *elf) {
 }
 
 
-static int elf_create_process_map_address(struct process* p, uint64_t map_from, void *kernel_address, uint64_t section_size) {
-    // Translate to physical address
-    uint64_t map_to = page_table_virtual_to_physical(kernel_page_table, (uint64_t)kernel_address);
-    if(!map_to) {
-        return 1;
-    }
-
-    // print("Mapping {x} bytes from virtual address {p} to physical address {p}\r\n", (uint32_t)section_size, map_from, map_to);
-
-    // Attemp to perform mapping
-    if(map_memory_region(p->addr_space, map_from, map_to, section_size)) {
-        print("Failed to map memory region for ELF file\r\n");
-        return 1;
-    }
-
-    return 0;
-}
-
-
-static void *elf_create_add_memory_region(struct process *p, uint64_t size) {
-    // Allocate memory. This returns a kernel virtual address.
-    void* header_memory = kmalloc(size, ALLOC_ZERO_INIT | ALLOC_PAGE_ALIGN);
-    if(!header_memory) {
-        print("Failed to allocate process memory!\r\n");
-        return 0;
-    }
-
-    struct process_memory_handle *al = kmalloc(sizeof(struct process_memory_handle), 0);
-    if(!al) {
-        free(header_memory);
-        free_process_memory(p);
-        return 0;
-    }
-    struct process_memory_handle *old_al = p->allocated_list;
-    al->next = old_al;
-    al->memory = header_memory;
-    p->allocated_list = al;
-    return header_memory;
-}
-
-
 /**
  * @brief Creates a new process from an elf file.
  * 
@@ -230,12 +189,12 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
         }
 
         // Append memory region to the processes allocation lists
-        void* header_memory = elf_create_add_memory_region(p, hdr->proc_size);
+        void* header_memory = new_process_memory_region(p, hdr->proc_size);
         if(!header_memory) {
             return 1;
         }
 
-        reterr(elf_create_process_map_address(p, map_from, header_memory, round_up_to_page(hdr->proc_size)));
+        reterr(map_memory_region_virt(p->addr_space, map_from, (uint64_t)header_memory, round_up_to_page(hdr->proc_size)));
 
         // Copy data
         memcpy((char*)header_memory + file_page_offset, elf->node->data + hdr->file_address, hdr->file_size);
@@ -243,22 +202,22 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
 
     // Allocate ram for the stack
     // Allocate memory. This returns a kernel virtual address.
-    void* stack_memory = elf_create_add_memory_region(p, p->user_thread->stack_size);
+    void* stack_memory = new_process_memory_region(p, p->user_thread->stack_size);
     if(!stack_memory) {
         print("Failed to allocate process user stack!\r\n");
         return 1;
     }
     uint64_t stack_begin = (uint64_t)p->user_thread->sp - p->user_thread->stack_size;
-    reterr(elf_create_process_map_address(p, stack_begin, stack_memory, p->user_thread->stack_size));
+    reterr(map_memory_region_virt(p->addr_space, stack_begin, (uint64_t)stack_memory, p->user_thread->stack_size));
 
 
     // Create the necessary kernel context
-    void* kernel_stack = elf_create_add_memory_region(p, p->kern_thread->stack_size);
+    void* kernel_stack = new_process_memory_region(p, p->kern_thread->stack_size);
     if(!kernel_stack) {
         print("Failed to allocate process kernel stack!\r\n");
         return 1;
     }
-    p->kern_thread->sp = (uint64_t)kernel_stack;
+    p->kern_thread->sp = (uint64_t)kernel_stack + p->kern_thread->stack_size;
     p->kern_thread->link_reg = (uint64_t)(switch_to_user_thread);
 
     return 0;

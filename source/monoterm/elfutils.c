@@ -115,6 +115,8 @@ int monoterm_run(int argc, char *argv[]) {
         return 1;
     }
 
+    // print_process(p);
+
     // Put process into linked list
     p->next = process_list_head;
     process_list_head->prev = p;
@@ -124,11 +126,10 @@ int monoterm_run(int argc, char *argv[]) {
     // print("Entry point @ {p}\r\n", p->process_entry_point);
     // print("First command: {x}\r\n", *(uint32_t*)p->process_entry_point);
 
-    // page_table_print(kernel_page_table);
     switch_to_process(p, false);
 
     // TODO: Do this in a scheduler garbage collection method
-    free_process_memory(p);
+    destroy_process(p);
 
 
     return 0;

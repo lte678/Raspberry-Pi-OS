@@ -76,7 +76,7 @@ void kernel_entry_point(void) {
         panic();
     }
     // After this point, physical addresses no longer work!
-    if(unmap_memory_region(kernel_address_space, id_mapping)) {
+    if(unmap_and_remove_memory_region(kernel_address_space, id_mapping)) {
         print("Failed to unmap identity mapping!\r\n");
         panic();
     }

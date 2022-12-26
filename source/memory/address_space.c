@@ -3,6 +3,7 @@
 #include <kernel/alloc.h>
 #include <kernel/print.h>
 #include <kernel/page.h>
+#include <kernel/util.h>
 
 
 struct address_space* kernel_address_space = 0;
@@ -15,6 +16,9 @@ struct address_space* kernel_address_space = 0;
  * @return 1 if overlapping
  */
 static int memory_region_overlaps(struct address_mapping *map1, struct address_mapping *map2) {
+    if(!map1->active || !map2->active) {
+        return 0;
+    }
     // Check if start or end of region 1 is inside region 2
     if(map1->vaddress >= map2->vaddress && map1->vaddress < (map2->vaddress + map2->size)) {
         return 1;
@@ -32,7 +36,7 @@ static int memory_region_overlaps(struct address_mapping *map1, struct address_m
 
 
 /**
- * @brief Maps virtual memory in the specified virtual address space.
+ * @brief Maps address to physical address in the specified virtual address space. Adds to linked list.
  * 
  * @param aspace Address space containing the page tables to be modified.
  * @param vaddr The start of the virtual address block
@@ -48,6 +52,7 @@ int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t pad
     new_map->vaddress = vaddr;
     new_map->paddress = paddr;
     new_map->size = size;
+    new_map->active = true;
 
     // Check for overlaps
     for(struct address_mapping *other = aspace->mappings; other; other = other->next) {
@@ -74,8 +79,33 @@ int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t pad
     return 0;
 }
 
+
 /**
- * @brief Unmaps virtual memory in the specified virtual address space.
+ * @brief Maps address to kernel address in the specified virtual address space. Adds to linked list.
+ * 
+ * @param aspace Address space containing the page tables to be modified.
+ * @param vaddr The start of the virtual address block
+ * @param paddr The start of the physical address block
+ * @param size Size of the memory region to map
+ * @return 0 for success
+ */
+int map_memory_region_virt(struct address_space *aspace, uint64_t vaddr, uint64_t kaddr, uint64_t size) {
+    // Translate kernel address to physical address for page table entry
+    uint64_t map_to = page_table_virtual_to_physical(kernel_page_table, (uint64_t)kaddr);
+    if(!map_to) {
+        return 1;
+    }
+
+    if(map_memory_region(aspace, vaddr, map_to, size)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+
+/**
+ * @brief Unmaps virtual memory in the specified virtual address space. Does not remove address_mapping struct.
  * 
  * @param aspace Address space containing the page tables to be modified.
  * @param mapping The mapping in aspace to unmap
@@ -86,6 +116,22 @@ int unmap_memory_region(struct address_space *aspace, struct address_mapping *ma
     if(page_table_unmap_address(aspace->page_table, mapping->vaddress, mapping->size)) {
         return 1;
     }
+
+    mapping->active = false;
+    return 0;
+}
+
+
+/**
+ * @brief Unmaps virtual memory in the specified virtual address space. Removes address_mapping struct.
+ * 
+ * @param aspace Address space containing the page tables to be modified.
+ * @param mapping The mapping in aspace to unmap
+ * @return 0 for success
+ */
+int unmap_and_remove_memory_region(struct address_space *aspace, struct address_mapping *mapping) {
+    reterr(unmap_memory_region(aspace, mapping));
+
     // Remove from linked list, then free
     if(mapping->prev) {
         mapping->prev->next = mapping->next;
@@ -99,7 +145,6 @@ int unmap_memory_region(struct address_space *aspace, struct address_mapping *ma
     free(mapping);
     return 0;
 }
-
 
 
 /**
@@ -153,6 +198,7 @@ struct address_space* init_kernel_address_space_struct(struct address_mapping **
     new_id_map->vaddress = 0;
     new_id_map->paddress = 0;
     new_id_map->size = PAGE_SIZE * PAGE_TABLE_ENTRIES * PAGE_TABLE_ENTRIES;
+    new_id_map->active = true;
 
      // Insert memory region into linked list
     kaddrspace->mappings = new_id_map;
@@ -162,6 +208,7 @@ struct address_space* init_kernel_address_space_struct(struct address_mapping **
     new_map->vaddress = VA_OFFSET;
     new_map->paddress = 0;
     new_map->size = PAGE_SIZE * PAGE_TABLE_ENTRIES * PAGE_TABLE_ENTRIES;
+    new_map->active = true;
 
     kernel_address_space = kaddrspace;
     *id_mapping = new_id_map;

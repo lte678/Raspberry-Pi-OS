@@ -7,6 +7,7 @@
 #define __NR_getpid  5
 #define __NR_open    6
 #define __NR_close   7
+#define __NR_sbrk    8
 #define __NR_notimpl 255
 
 

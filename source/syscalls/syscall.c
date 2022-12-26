@@ -6,6 +6,7 @@
 #include <kernel/scheduler.h>
 #include "write.h"
 #include "close.h"
+#include "sbrk.h"
 
 #include <kernel/syscall.h>
 
@@ -36,6 +37,13 @@ uint64_t handle_syscall(uint64_t syscall, uint64_t a1, uint64_t a2, uint64_t a3,
         print("close({d})\r\n", (int)a1);
         #endif
         return syscall_close((int)a1);
+        break;
+
+    case __NR_sbrk:
+        #ifdef TRACE_SYSCALLS
+        print("sbrk({d})\r\n", (int)a1);
+        #endif
+        return syscall_sbrk((int)a1);
         break;
 
     default:
