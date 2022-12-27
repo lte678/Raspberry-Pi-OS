@@ -1,4 +1,6 @@
 #include <kernel/print.h>
+#include <kernel/pagetable.h>
+#include <kernel/address_space.h>
 #include <kernel/types.h>
 #include "bindings.h"
 #include "../alloc/buddy.h"
@@ -38,9 +40,15 @@ int monoterm_memstat(int argc, char *argv[]) {
             return 0;
         } else if(!strcmp(argv[1], "free_lists")) {
             return monoterm_buddy_print_free_lists(argc, argv);
+        } else if(!strcmp(argv[1], "pagetable")) {
+            page_table_print(kernel_page_table);
+            return 0;
+        } else if(!strcmp(argv[1], "mappings")) {
+            print_address_space(kernel_address_space);
+            return 0;
         }
     }
     
-    print("Usage: memstat [map|regions|free_lists]\r\n");
+    print("Usage: memstat [map|regions|free_lists|pagetable|mappings]\r\n");
     return 1;
 }

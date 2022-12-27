@@ -27,3 +27,4 @@ int unmap_memory_region(struct address_space *aspace, struct address_mapping *ma
 int unmap_and_remove_memory_region(struct address_space *aspace, struct address_mapping *mapping);
 struct address_space* allocate_address_space();
 struct address_space* init_kernel_address_space_struct();
+void print_address_space(struct address_space* s);

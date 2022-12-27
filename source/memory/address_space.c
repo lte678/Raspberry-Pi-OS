@@ -214,3 +214,16 @@ struct address_space* init_kernel_address_space_struct(struct address_mapping **
     *id_mapping = new_id_map;
     return kaddrspace;
 }
+
+
+void print_address_space(struct address_space* s) {
+    struct address_mapping *i = s->mappings;
+    while(i) {
+        print("{xl} - {xl}   maps to   {xl} - {xl}\r\n",
+            i->vaddress,
+            i->vaddress + i->size,
+            i->paddress,
+            i->paddress + i->size);
+        i = i->next;
+    }
+}

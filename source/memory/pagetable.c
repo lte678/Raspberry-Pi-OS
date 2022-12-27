@@ -2,6 +2,7 @@
 
 #include <kernel/page.h>
 #include <kernel/print.h>
+#include <kernel/panic.h>
 #include <kernel/alloc.h>
 
 // There are 4 page table levels. 0 is the uppermost level. 3 is the most detailled level
@@ -15,8 +16,12 @@ static uint16_t address_index(uint64_t addr, uint8_t level) {
 }
 
 
-static int is_table_entry(uint64_t entry) {
-    return (entry & 0b11) == 0b11;
+static int is_table_entry(uint64_t entry, int8_t level) {
+    if(level == 3) {
+        return 0;
+    } else {
+        return (entry & 0b11) == 0b11;
+    }
 }
 
 
@@ -33,9 +38,12 @@ static uint64_t get_address_from_descriptor(uint64_t desc) {
     return desc & 0x0000FFFFFFFFF000ul;
 }
 
-//static void tlb_invalidate_el1() {
-//	__asm__ __volatile__("tlbi alle1" : : : "memory");
-//}
+
+static void tlb_invalidate_el1() {
+	__asm__ __volatile__("tlbi vmalle1");
+    __asm__ __volatile__("dsb ish");
+    __asm__ __volatile__("isb");
+}
 
 void page_table_init() {
     kernel_page_table = *(uint64_t**)((char*)&_kernel_page_table + VA_OFFSET);
@@ -93,7 +101,7 @@ uint64_t page_table_virtual_to_physical(uint64_t* table, uint64_t a) {
     for(int level = 0; level <= 3; level++) {
         uint16_t pgt_index = address_index(a, level);
         uint64_t entry = table[pgt_index];
-        if(is_table_entry(entry)) {
+        if(is_table_entry(entry, level)) {
             table = PT_ADDRESS_TO_KERN((uint64_t*)get_address_from_descriptor(entry));
         } else if(is_leaf_entry(entry, level)) {
             uint64_t base_address = get_address_from_descriptor(entry);
@@ -142,7 +150,7 @@ int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint6
                 // Page table leaf node
                 print("Conflicting entry already present in page table! (address: %p)\r\n", current_address);
                 return -1;
-            } else if(is_table_entry(current_table[table_index])) {
+            } else if(is_table_entry(current_table[table_index], i)) {
                 // Page table index to next table -> follow
                 current_table = PT_ADDRESS_TO_KERN((uint64_t*)(current_table[table_index] & ~0b11));
             } else {
@@ -163,6 +171,36 @@ int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint6
 }
 
 
+/**
+ * @brief Removes child from parent page table if child is empty
+ * 
+ * @param parent 
+ * @param child 
+ */
+static void prune_if_empty(uint64_t* parent, uint64_t* child) {
+    for(int i = 0; i < PAGE_TABLE_ENTRIES; i++) {
+        if(child[i]) {
+            return;
+        }
+    }
+    // No entry is present -> prune
+    for(int i = 0; i < PAGE_TABLE_ENTRIES; i++) {
+        uint64_t* table = PT_ADDRESS_TO_KERN((uint64_t*)(parent[i] & ~0b11));
+        // print("{xl} != {xl}\r\n", (uint64_t)table, (uint64_t)child);
+        if((uint64_t)table == (uint64_t)child) {
+            // We have found the parent entry for the empty child
+            // TODO: Make all page tables dynamically allocated, so that all pages are managed by the allocator.
+            try_free(child);
+            parent[i] = 0;
+            return;
+        }
+    }
+    print("Corrupted page table in prune_if_empty()\r\n");
+    panic();
+    return;
+}
+
+
 /*!
  * Removes the mapping for the specified virtual address range.
  * @param root_table Pointer to the page table we are modifing
@@ -180,17 +218,22 @@ int page_table_unmap_address(uint64_t* root_table, uint64_t va, uint64_t size) {
         // Search for the current address in the page table
         // Page table level
         int i = 0;
-        uint64_t* current_table = root_table;
+        uint64_t* tables[] = {root_table, 0, 0, 0};
         while(i <= PAGE_TABLE_LEVELS) {
+            uint64_t* current_table = tables[i];
             uint16_t table_index = address_index(current_address, i);
             if(is_leaf_entry(current_table[table_index], i)) {
                 // Page table leaf node that we want to remove
                 current_table[table_index] = 0;
                 current_address += page_table_block_size(i);
+                for(int i_remove = i; i_remove > 0; i_remove--) {
+                    // Travel up the page tables to prune any that are empty
+                    prune_if_empty(tables[i_remove - 1], tables[i_remove]);
+                }
                 break;
-            } else if(is_table_entry(current_table[table_index])) {
+            } else if(is_table_entry(current_table[table_index], i)) {
                 // Page table index to next table -> follow
-                current_table = PT_ADDRESS_TO_KERN((uint64_t*)(current_table[table_index] & ~0b11));
+                tables[i+1] = PT_ADDRESS_TO_KERN((uint64_t*)(current_table[table_index] & ~0b11));
             } else {
                 print("page_table_unmap_address: warning: attempting to unmap non-mapped regions.\r\n");
                 current_address += page_table_block_size(i);
@@ -199,8 +242,7 @@ int page_table_unmap_address(uint64_t* root_table, uint64_t va, uint64_t size) {
             i++;
         }
     }
-    // TODO: Why does this cause an exception?
-    //tlb_invalidate_el1();
+    tlb_invalidate_el1();
     return 0;
 }
 
@@ -255,7 +297,7 @@ static void page_table_print_section(uint64_t* table, int depth) {
             print(": {xl}\r\n",table[i]);
 
             // Current page table level == depth - 1
-            if(depth - 1 < 3 && is_table_entry(table[i])) {
+            if(is_table_entry(table[i], depth - 1)) {
                 // Points to another table
                 uint64_t* next_table = PT_ADDRESS_TO_KERN((uint64_t*)get_address_from_descriptor(table[i]));
                 page_table_print_section(next_table, depth + 1);

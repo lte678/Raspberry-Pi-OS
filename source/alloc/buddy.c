@@ -331,18 +331,32 @@ void* kmalloc(unsigned long size, uint32_t flags) {
 }
 
 
-void free(void* memory) {
+/**
+ * @brief Used when the memory may not have been dynamically allocated, so a failure is acceptable.
+ * 
+ * @param memory 
+ * @return int 
+ */
+int try_free(void* memory) {
     struct mem_blk *b = blk_all_head;
     while(b) {
         if(b->start_addr == memory && b->allocated) {
             b->allocated = 0;
             insert_into_free_list(b);
             merge_blocks(b);
-            return;
+            return 0;
         }
         b = b->next;
     }
-    print("Attempted to free invalid pointer!\r\n");
+    
+    return 1;
+}
+
+
+void free(void* memory) {
+    if(try_free(memory)) {
+        print("Attempted to free invalid pointer!\r\n");
+    }
 }
 
 

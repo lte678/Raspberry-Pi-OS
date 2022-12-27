@@ -10,5 +10,6 @@
 void* kmalloc(unsigned long size, uint32_t flags);
 void* kmalloc_largest_available(uint64_t size, uint32_t flags, uint64_t *allocated_size);
 void free(void* memory);
+int try_free(void* memory);
 
 #endif
