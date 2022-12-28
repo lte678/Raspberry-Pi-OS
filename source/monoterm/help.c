@@ -6,7 +6,7 @@ int monoterm_help(int argc, char *argv[]) {
     // Loop until we reach the final pseudo-token
     while(*(cmd->cmd)) {
         // TODO width specifier
-        print(" {s}\x1B[16G{s}\r\n", cmd->cmd, cmd->desc);
+        print(" {s}\x1B[16G{s}\n", cmd->cmd, cmd->desc);
         cmd++;
     }
     return 0;

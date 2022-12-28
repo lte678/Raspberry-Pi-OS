@@ -11,19 +11,19 @@ int monoterm_ls(int argc, char *argv[]) {
     } else if(argc == 2) {
         path = argv[1];
     } else {
-        print("Invalid number of arguments.\r\nUsage: ls [path]\r\n");
+        print("Invalid number of arguments.\nUsage: ls [path]\n");
         return 1;
     }
 
     struct inode* folder = inode_from_path(g_root_inode, path);
 
     if(!folder) {
-        print("Could not resolve path.\r\n");
+        print("Could not resolve path.\n");
         return 1;
     }
     if(folder->state & INODE_TYPE_FILE) {
         term_set_color(15);
-        print("{s}\r\n", folder->filename);
+        print("{s}\n", folder->filename);
         term_reset_font();
         return 0;
     }
@@ -46,7 +46,7 @@ int monoterm_ls(int argc, char *argv[]) {
         for(int i = 20 - strlen(it->filename); i > 0; i--) {
             print(" ");
         }
-        print("{u}B\r\n", it->data_size);
+        print("{u}B\n", it->data_size);
         term_reset_font();
         it = it->peer_nodes;
     }
@@ -56,31 +56,31 @@ int monoterm_ls(int argc, char *argv[]) {
 
 int monoterm_cat(int argc, char *argv[]) {
     if(argc != 2) {
-        print("Invalid number of arguments.\r\nUsage: cat [file]\r\n");
+        print("Invalid number of arguments.\nUsage: cat [file]\n");
         return 1;
     }
 
     struct inode* file = inode_from_path(g_root_inode, argv[1]);
     if(!file) {
-        print("Invalid file\r\n");
+        print("Invalid file\n");
         return 1;
     }
 
     if(file->state & INODE_TYPE_DIR) {
-        print("Target is a directory.\r\n");
+        print("Target is a directory.\n");
         return 1;
     }
     inode_fetch_data(file);
 
     if(!(file->state & INODE_STATE_VALID)) {
-        print("Failed to read file.\r\n");
+        print("Failed to read file.\n");
         return 1;
     }
 
     for(unsigned int i = 0; i < file->data_size; i++) {
         char c = ((char*)file->data)[i];
         if(c == '\n') {
-            print("\r\n");
+            print("\n");
         } else if(c != '\r') {
             print("{c}", c);
         }

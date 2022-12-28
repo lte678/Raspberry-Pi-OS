@@ -1,22 +1,25 @@
 #include <kernel/print.h>
+#include <kernel/device_types.h>
+#include <kernel/chardev.h>
+#include <kernel/process.h>
 
 #include "write.h"
 
 
-static void print_user_string(char *ptr, int len) {
-    // We can resolve userspace addresses, since the relevant pages will still be mapped currently
-    print(ptr);
-}
-
-
 int syscall_write(int file, char *ptr, int len) {
-    switch(file) {
-    case 1:
-        // STDOUT
-        print_user_string(ptr, len);
-        return len;
-    default:
-        print("syscall:write: Invalid file descriptor\r\n");
-        return 0;
+    struct stream_descriptor *i = kernel_curr_process->streams;
+    while(i) {
+        if(i->id == file) {
+        switch(i->dev_type) {
+        case DEVICE_TYPE_CHAR:
+            write_char(i->dev, ptr, len);
+            return len;
+        default:
+            print("Cannot write to non-char devices!\n");
+        }
+
+        }
+        i = i->next;
     }
+    return 0;
 }

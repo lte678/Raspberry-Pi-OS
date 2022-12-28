@@ -10,9 +10,9 @@ void switch_to_next_process(bool_t terminating) {
             // Execute this process
             switch_to_process(p, terminating);
         } else if(p->state == PROCESS_STATE_TERMINATED) {
-            print("Process with PID {d} should be deallocated.\r\n", p->pid);
+            print("Process with PID {d} should be deallocated.\n", p->pid);
         }
     }
-    print("Scheduler: No runnable process found!\r\n");
+    print("Scheduler: No runnable process found!\n");
     panic();
 }

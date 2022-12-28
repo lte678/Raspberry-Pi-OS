@@ -1,6 +1,7 @@
 #include <kernel/string.h>
 #include <kernel/types.h>
 #include <kernel/valist.h>
+#include <kernel/chardev.h>
 
 #include "uart.h"
 
@@ -61,10 +62,10 @@ void print_int(int number) {
     // Theoretically, we should never surpass 12 characters (including null byte)
     char buff[12];
     if(itos(number, buff, sizeof(buff)) > 0) {
-        uart_print(buff);
+        write_string_char(&global_uart, buff);
         return;
     }
-    uart_print("ERR");
+    write_string_char(&global_uart, "ERR");
 }
 
 
@@ -72,30 +73,30 @@ void print_uint(unsigned int number) {
     // Theoretically, we should never surpass 12 characters (including null byte)
     char buff[12];
     if(utos(number, buff, sizeof(buff)) > 0) {
-        uart_print(buff);
+        write_string_char(&global_uart, buff);
         return;
     }
-    uart_print("ERR");
+    write_string_char(&global_uart, "ERR");
 }
 
 void print_long(long number) {
     // Theoretically, we should never surpass 21 characters (including null byte)
     char buff[21];
     if(ltos(number, buff, sizeof(buff)) > 0) {
-        uart_print(buff);
+        write_string_char(&global_uart, buff);
         return;
     }
-    uart_print("ERR");
+    write_string_char(&global_uart, "ERR");
 }
 
 void print_ulong(unsigned long number) {
     // Theoretically, we should never surpass 21 characters (including null byte)
     char buff[21];
     if(ultos(number, buff, sizeof(buff)) > 0) {
-        uart_print(buff);
+        write_string_char(&global_uart, buff);
         return;
     }
-    uart_print("ERR");
+    write_string_char(&global_uart, "ERR");
 }
 
 void print_hex(const unsigned char* bytes, unsigned short n) {
@@ -107,7 +108,7 @@ void print_hex(const unsigned char* bytes, unsigned short n) {
         // Note: Upper means upper bits, and upper case in this situation
         buff[0] = hex_char_upper((bytes[i] & 0xF0) >> 4);
         buff[1] = hex_char_upper(bytes[i] & 0x0F);
-        uart_print(buff);
+        write_string_char(&global_uart, buff);
     }
 }
 
@@ -120,7 +121,7 @@ void print_hex_be(const unsigned char* bytes, unsigned short n) {
         // Note: Upper means upper bits, and upper case in this situation
         buff[0] = hex_char_upper((bytes[i] & 0xF0) >> 4);
         buff[1] = hex_char_upper(bytes[i] & 0x0F);
-        uart_print(buff);
+        write_string_char(&global_uart, buff);
     }
 }
 
@@ -154,7 +155,7 @@ void print_hex_uint64(uint64_t num) {
 }
 
 void print_address(void* addr) {
-    uart_print("0x");
+    write_string_char(&global_uart, "0x");
     uint64_t addr_int = (uint64_t)addr;
     print_hex_be((unsigned char*)&addr_int, 8);
 }
@@ -181,7 +182,7 @@ void _print(char *fstring, int numargs, ...) {
                 //format_start = fstring + 1;
                 state = 1;
             } else {
-                uart_send(*fstring);
+                write_char(&global_uart, fstring, 1);
             }
         } else {
             // Inside format tag
@@ -210,7 +211,7 @@ void _print(char *fstring, int numargs, ...) {
                         switch(*(format_end - 1)) {
                             case 'c':
                                 int c_arg = va_arg(args, int);
-                                uart_send((char)c_arg);
+                                write_char(&global_uart, &c_arg, 1);
                                 break;
                             case 'i':
                             case 'd':
@@ -223,7 +224,7 @@ void _print(char *fstring, int numargs, ...) {
                                 break;
                             case 's':
                                 char* s_arg = va_arg(args, char*);
-                                uart_print(s_arg);
+                                write_string_char(&global_uart, s_arg);
                                 break;
                             case 'x':
                                 int x_arg = va_arg(args, unsigned int);

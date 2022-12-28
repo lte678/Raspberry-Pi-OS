@@ -9,9 +9,9 @@
 
 
 _Noreturn static void panic() {
-    print("####################\r\n");
-    print("### KERNEL PANIC ###\r\n");
-    print("####################\r\n");
+    print("####################\n");
+    print("### KERNEL PANIC ###\n");
+    print("####################\n");
     while(1);
 }
 

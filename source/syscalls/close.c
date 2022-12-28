@@ -4,6 +4,6 @@
 
 
 int syscall_close(int fd) {
-    print("TODO: Closing fd {d}\r\n", fd);
+    // Streams cannot be closed. This is a no-op in our os currently.
     return 0;
 }

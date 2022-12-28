@@ -1,6 +1,7 @@
 #include <kernel/string.h>
 #include <kernel/print.h>
 #include <kernel/term.h>
+#include <kernel/chardev.h>
 
 #include "bindings.h"
 #include "disk/sd.h"
@@ -52,7 +53,7 @@ int process_input(char *s) {
         }
         cmd++;
     }
-    print("Command not found!\r\n");
+    print("Command not found!\n");
     return -1;
 }
 
@@ -70,14 +71,15 @@ void monoterm_start() {
     int input_i = 0;
     char prev = '\0'; // To check whether the last character was an escape
     while(1) {
-        unsigned char c = uart_recv();
-        // Only execute \r\n and \n\r once
+        char c;
+        read_char(&global_uart, &c, 1);
+        // Only execute \n and \n\r once
         if((c == '\r' && prev != '\n') || (c == '\n' && prev != '\r')) {
             input[input_i] = '\0';
-            print("\r\n"); 
+            print("\n"); 
             // Process user input buffer
             if(process_input(input)) {
-                print("Command terminated with error.\r\n");
+                print("Command terminated with error.\n");
             }
             // Display new prompt
             print_prompt();
@@ -91,7 +93,7 @@ void monoterm_start() {
         } else {
             input[input_i] = c;
             // Echo user input
-            uart_send(c);
+            write_char(&global_uart, &c, 1);
             input_i++;
         }
         prev = c;

@@ -127,7 +127,7 @@ static void insert_into_all_list(struct mem_blk* b) {
 static struct mem_blk *alloc_new_block(char size, void* addr) {
     struct mem_blk *b = pool_alloc(&buddy_pool);
     if(!b) {
-        print("Buddy: Failed to allocate block struct!\r\n");
+        print("Buddy: Failed to allocate block struct!\n");
         return 0;
     }
     // Initialize struct
@@ -173,7 +173,7 @@ static int split_block(struct mem_blk *b) {
         remove_from_free_list(b);
         return 0;
     } else {
-        print("Allocator attempted to split block of size 0.\r\n");
+        print("Allocator attempted to split block of size 0.\n");
         panic();
     }
 }
@@ -216,7 +216,7 @@ static void merge_blocks(struct mem_blk *b) {
         }
         i = i->next;
     }
-    print("Buddy: Tried to merge invalid block!\r\n");
+    print("Buddy: Tried to merge invalid block!\n");
 }
 
 
@@ -268,8 +268,8 @@ static struct mem_blk *next_free_block(int size) {
         // Perform sanity check
         #ifdef DEBUG_BUDDY
         if(size != freeb->blk_size) {
-            print("Unexpected block in free head array!\r\n");
-            print("{i} != {i}\r\n", freeb->blk_size, size);
+            print("Unexpected block in free head array!\n");
+            print("{i} != {i}\n", freeb->blk_size, size);
             panic();
         }
         #endif
@@ -280,13 +280,13 @@ static struct mem_blk *next_free_block(int size) {
         // Get the next_free free block of greater size
         freeb = next_free_block(size + 1);
         if(!freeb) {
-            //print("Error: next_free_block: Out of memory!\r\n");
+            //print("Error: next_free_block: Out of memory!\n");
             return 0;
         }
 
         // Split block into two smaller blocks
         #ifdef DEBUG_BUDDY
-        print("Splitting block with address {p}\r\n", freeb->start_addr);
+        print("Splitting block with address {p}\n", freeb->start_addr);
         #endif
 
         if(split_block(freeb)) {
@@ -319,7 +319,7 @@ void* kmalloc(unsigned long size, uint32_t flags) {
     b->allocated = 1;
     
     #ifdef DEBUG_BUDDY
-    print("Found free {ul} byte block (level: {i}) at addr {p}\r\n", size_to_bytes(i), i, b->start_addr);
+    print("Found free {ul} byte block (level: {i}) at addr {p}\n", size_to_bytes(i), i, b->start_addr);
     #endif
 
     // Zero region if flag is set
@@ -355,7 +355,7 @@ int try_free(void* memory) {
 
 void free(void* memory) {
     if(try_free(memory)) {
-        print("Attempted to free invalid pointer!\r\n");
+        print("Attempted to free invalid pointer!\n");
     }
 }
 
@@ -387,7 +387,7 @@ void* kmalloc_largest_available(uint64_t size, uint32_t flags, uint64_t *allocat
     *allocated_size = size_to_bytes(i + 1);
 
     #ifdef DEBUG_BUDDY
-    print("Found free {ul} byte block (level: {i}) at addr {p}\r\n", size_to_bytes(i), i, b->start_addr);
+    print("Found free {ul} byte block (level: {i}) at addr {p}\n", size_to_bytes(i), i, b->start_addr);
     #endif
 
     // Zero region if flag is set
@@ -401,7 +401,7 @@ void* kmalloc_largest_available(uint64_t size, uint32_t flags, uint64_t *allocat
 
 int init_buddy_allocator() {
     // Creates superblock starting at address 0
-    print("Initializing buddy allocator with block size {i}\r\n", MIN_BLK_BYTES);
+    print("Initializing buddy allocator with block size {i}\n", MIN_BLK_BYTES);
 
     // Figure out heap limits
     uint64_t max_blk_mask = size_to_bytes(MAX_MEM_BLK_SIZE) - 1;
@@ -411,8 +411,8 @@ int init_buddy_allocator() {
     // Round up heap start to next increment of MAX_MEM_BLK_SIZE
     void* heap_min_limit = (void*)(((uint64_t)__static_memory_end + max_blk_mask) & ~max_blk_mask);
     if(heap_end < heap_min_limit + size_to_bytes(MAX_MEM_BLK_SIZE)) {
-        print("Failed to allocate buddy blocks: Insufficient memory!\r\n");
-        print("{ul}B available\r\n", heap_end - heap_min_limit);
+        print("Failed to allocate buddy blocks: Insufficient memory!\n");
+        print("{ul}B available\n", heap_end - heap_min_limit);
         return 1;
     }
 
@@ -428,7 +428,7 @@ int init_buddy_allocator() {
     }
     // Reserve the block we gave to the memory pool
     if(buddy_reserve_block(heap_min_limit, INITIAL_POOL_SIZE)) {
-        print("Failed to reserve buddy block for early pool allocator.\r\n");
+        print("Failed to reserve buddy block for early pool allocator.\n");
         return 1;
     }
     // Mark this first page's address as the beginning of our heap
@@ -490,7 +490,7 @@ static void print_block_tree(struct mem_blk *b, char start_depth) {
         term_set_cursor_column(start_depth * 2 + 1 + 20);
         print(" [allocated]");
     }
-    print("\r\n");
+    print("\n");
     if(b->child1 || b->child2) {
         // Block is split
         print_block_tree(b->child1, start_depth);
@@ -507,21 +507,21 @@ static void print_block(struct mem_blk *b) {
     } else {
         print(",children=0");
     }
-    print(",addr={p})\r\n", b->start_addr);
+    print(",addr={p})\n", b->start_addr);
 }
 
 int monoterm_buddy_print_free_lists(int argc, char* argv[]) {
     if(argc != 3) {
-        print("Requires block size argument.\r\n");
+        print("Requires block size argument.\n");
         return 1;
     }
     int blk_size;
     if(atoi(argv[2], &blk_size)) {
-        print("Invalid block size.\r\n");
+        print("Invalid block size.\n");
         return 1;
     }
     if(blk_size < 0 || blk_size > MAX_MEM_BLK_SIZE) {
-        print("Invlid block size.\r\n");
+        print("Invlid block size.\n");
         return 1;
     }
 

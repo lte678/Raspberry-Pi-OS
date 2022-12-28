@@ -51,16 +51,16 @@ void init_exceptions() {
 
 static void print_esr_and_far(uint64_t esr, uint64_t far, unsigned int error_class) {
 	// Exception link register (fault address)
-	print("ELR: {xl}\r\n", read_system_reg(ELR_EL1));
+	print("ELR: {xl}\n", read_system_reg(ELR_EL1));
 	// Exception syndrome register
-	print("ESR: {xl}    FAR: {xl}\r\n", esr, far);
-	print("EC: {u}    IL: {u}    ISS(23): {u}    ISS: {u}\r\n", error_class, (esr >> 25) & 1, (esr & 0x1000000) > 24, esr & 0xFFFFFF);
+	print("ESR: {xl}    FAR: {xl}\n", esr, far);
+	print("EC: {u}    IL: {u}    ISS(23): {u}    ISS: {u}\n", error_class, (esr >> 25) & 1, (esr & 0x1000000) > 24, esr & 0xFFFFFF);
 }
 
 void handle_unknown_exception()
 {
 	apply_exception_formatting();
-	print("## UNKNOWN EXCEPTION ##\r\n");
+	print("## UNKNOWN EXCEPTION ##\n");
 	panic();
 }
 
@@ -71,21 +71,21 @@ void handle_exception_sync()
 	uint64_t far = read_system_reg(FAR_EL1);
 	unsigned int error_class = (esr & (0b111111 << 26)) >> 26;
 
-	print("## SYNC EXCEPTION ##\r\n");
+	print("## SYNC EXCEPTION ##\n");
 	switch(error_class) {
 	case 7:
-		print("Invalid vector instruction.\r\n");
+		print("Invalid vector instruction.\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	case 37:
 		// 0b100101: Data Abort taken without change in exception level.
-		print("Invalid memory access from kernel!\r\n");
+		print("Invalid memory access from kernel!\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 		break;
 	default:
-		print("Unidentified kernel exception.\r\n");	
-		print("See D13-5347 in ARM Reference Manual\r\n");
+		print("Unidentified kernel exception.\n");	
+		print("See D13-5347 in ARM Reference Manual\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	}
@@ -101,13 +101,13 @@ void handle_exception_irq() {
 
 void handle_exception_fiq() {
 	apply_exception_formatting();
-	print("## UNHANDLED FIQ EXCEPTION ##\r\n");
+	print("## UNHANDLED FIQ EXCEPTION ##\n");
 	panic();
 }
 
 void handle_exception_serror() {
 	apply_exception_formatting();
-	print("## SERROR EXCEPTION ##\r\n");
+	print("## SERROR EXCEPTION ##\n");
 	panic();
 }
 
@@ -119,15 +119,15 @@ uint64_t handle_exception_sync_el0(uint64_t syscall, uint64_t a1, uint64_t a2, u
 	switch(error_class) {
 	case 7:
 		apply_exception_formatting();
-		print("## EL0 SYNC EXCEPTION ##\r\n");
-		print("Invalid vector instruction.\r\n");
+		print("## EL0 SYNC EXCEPTION ##\n");
+		print("Invalid vector instruction.\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	case 36:
 		// 0b100101: Data Abort taken without change in exception level.
 		apply_exception_formatting();
-		print("## EL0 SYNC EXCEPTION ##\r\n");
-		print("Invalid memory access from userspace!\r\n");
+		print("## EL0 SYNC EXCEPTION ##\n");
+		print("Invalid memory access from userspace!\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 		break;
@@ -136,9 +136,9 @@ uint64_t handle_exception_sync_el0(uint64_t syscall, uint64_t a1, uint64_t a2, u
 		return handle_syscall(syscall, a1, a2, a3, a4, a5, a6);
 	default:
 		apply_exception_formatting();
-		print("## EL0 SYNC EXCEPTION ##\r\n");
-		print("Unidentified exception in userspace.\r\n");
-		print("See D13-5347 in ARM Reference Manual\r\n");
+		print("## EL0 SYNC EXCEPTION ##\n");
+		print("Unidentified exception in userspace.\n");
+		print("See D13-5347 in ARM Reference Manual\n");
 		print_esr_and_far(esr, far, error_class);
 		panic();
 	}
@@ -146,19 +146,19 @@ uint64_t handle_exception_sync_el0(uint64_t syscall, uint64_t a1, uint64_t a2, u
 
 void handle_exception_irq_el0() {
 	apply_exception_formatting();
-	print("## UNHANDLED EL0 IRQ EXCEPTION ##\r\n");
+	print("## UNHANDLED EL0 IRQ EXCEPTION ##\n");
 	panic();
 }
 
 void handle_exception_fiq_el0() {
 	apply_exception_formatting();
-	print("## UNHANDLED EL0 FIQ EXCEPTION ##\r\n");
+	print("## UNHANDLED EL0 FIQ EXCEPTION ##\n");
 	panic();
 }
 
 void handle_exception_serror_el0() {
 	apply_exception_formatting();
-	print("## EL0 SERROR EXCEPTION ##\r\n");
+	print("## EL0 SERROR EXCEPTION ##\n");
 	panic();
 }
 

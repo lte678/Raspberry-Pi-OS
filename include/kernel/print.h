@@ -12,8 +12,6 @@
 
 void _print(char *fstring, int numargs, ...);
 
-void uart_send(unsigned char c);
-void uart_print(char *string);
 void print_int(int number);
 void print_uint(unsigned int number);
 void print_long(long number);

@@ -6,44 +6,44 @@
 
 int static test_create_and_free(int argc, char *argv[]) {
     if(argc != 4) {
-        print("Usage: memtest create_and_free [size of blocks] [number of blocks]\r\n");
+        print("Usage: memtest create_and_free [size of blocks] [number of blocks]\n");
         return 1;
     }
     int block_size;
     if(atoi(argv[2], &block_size)) {
-        print("Invalid argument.\r\n");
+        print("Invalid argument.\n");
         return 1;
     }
     int number_blocks;
     if(atoi(argv[3], &number_blocks)) {
-        print("Invalid argument.\r\n");
+        print("Invalid argument.\n");
         return 1;
     }
 
-    print("Allocating pointers...\r\n");
+    print("Allocating pointers...\n");
     void** pointers = (void**)kmalloc(sizeof(void*) * number_blocks, 0);
     if(!pointers) {
-        print("Failed to allocate memory for pointers.\r\n");
+        print("Failed to allocate memory for pointers.\n");
         return 1;
     }
 
-    print("Allocating memory blocks...\r\n");
+    print("Allocating memory blocks...\n");
     for(int i = 0; i < number_blocks; i++) {
         pointers[i] = kmalloc(block_size, 0);
         if(pointers[i] == 0) {
-            print("Alloc. failed for block {i}\r\n", i);
+            print("Alloc. failed for block {i}\n", i);
         } else {
-            print("{p}\r\n", pointers[i]);
+            print("{p}\n", pointers[i]);
         }
     }
-    print("Releasing...\r\n");
+    print("Releasing...\n");
     for(int i = 0; i < number_blocks; i++) {
         if(pointers[i]) {
             free(pointers[i]);
         }
     }
     free(pointers);
-    print("Done!\r\n");
+    print("Done!\n");
 
     return 0;
 }
@@ -56,6 +56,6 @@ int monoterm_memtest(int argc, char *argv[]) {
         }
     }
     
-    print("Usage: memtest [create_and_free]\r\n");
+    print("Usage: memtest [create_and_free]\n");
     return 1;
 }

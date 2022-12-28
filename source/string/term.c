@@ -12,7 +12,7 @@ void term_set_cursor_column(int x) {
 
 void term_set_cursor_row(int x) {
     // TODO
-    print("\r\nterm_set_cursor_row not implemented!\r\n");
+    print("\nterm_set_cursor_row not implemented!\n");
 }
 
 void term_clear() {

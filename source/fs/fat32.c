@@ -11,12 +11,12 @@ static struct inode_ops fat32_inode_ops;
 static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *dev) {
     unsigned char *blk_buff = kmalloc(dev->block_size, 0);
     if(read_blk(dev, blk_buff) != 1) {
-        print("Failed to read block device.\r\n");
+        print("Failed to read block device.\n");
         return -1;
     }
 
     if(*(uint16_t*)(blk_buff + FAT32_MAGIC_NUMBER_OFFSET) != FAT32_MAGIC_NUMBER) {
-        print("Block device does not contain FAT signature.\r\n");
+        print("Block device does not contain FAT signature.\n");
         return -1;
     }
 
@@ -36,7 +36,7 @@ static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *de
 
 static int fat32_check_valid(struct bios_parameter_block *bpb) {
     if(bpb->bytes_per_sector != FAT32_BYTES_PER_SECTOR) {
-        print("Unexpected number of bytes per sector!\r\n");
+        print("Unexpected number of bytes per sector!\n");
         return -1;
     }
 
@@ -56,7 +56,7 @@ static int fat32_load_fat(struct fat32_disk *part) {
     while(1) {
         unsigned char *blk_buff = kmalloc(part->dev->block_size, 0);
         if(read_blk(part->dev, blk_buff) != 1) {
-            print("Failed to read block device.\r\n");
+            print("Failed to read block device.\n");
             free(blk_buff);
             free(part->fat);
             return -1;
@@ -81,18 +81,18 @@ static int fat32_load_fat(struct fat32_disk *part) {
 static int fat32_load_cluster(struct fat32_disk *partition, uint8_t *buffer, unsigned int n, uint32_t cluster_index) {
     unsigned int blk = partition->data_sector + (cluster_index - 2) * partition->bpb->sectors_per_cluster;
     if(seek_blk(partition->dev, (blk*partition->bpb->bytes_per_sector) / partition->dev->block_size)) {
-        print("FAT32: Failed to load cluster (seek)\r\n");
+        print("FAT32: Failed to load cluster (seek)\n");
         return 1;
     }
 
     if(n == 0) {
         if(read_blk(partition->dev, buffer) != 1) {
-            print("FAT32: Failed to load cluster (read)\r\n");
+            print("FAT32: Failed to load cluster (read)\n");
             return 1;
         }
     } else {
         if(read_nblk(partition->dev, buffer, n) != 1) {
-            print("FAT32: Failed to load cluster (readn)\r\n");
+            print("FAT32: Failed to load cluster (readn)\n");
             return 1;
         }
     }
@@ -149,7 +149,7 @@ static uint8_t parse_directory_entry(struct inode *result, uint8_t *entry_row, u
             // Expected termination
             result->filename[(index)*13] = 0;
         } else if(index != prev_index - 1) {
-            print("parse_directory_entry: Unexpected LFN order.\r\n");
+            print("parse_directory_entry: Unexpected LFN order.\n");
             return 0xFF;
         }
         
@@ -240,7 +240,7 @@ static int fat32_inode_read_directory(struct inode *n) {
                 new_child->fs_data = kmalloc(sizeof(struct fat32_inode_data), ALLOC_ZERO_INIT);
                 ((struct fat32_inode_data*)new_child->fs_data)->partition = partition;
             } else if(prev_index == 0xFF) {
-                print("FAT32 directory entry parse error.\r\n");
+                print("FAT32 directory entry parse error.\n");
                 free(new_child);
                 return 1;
             } else if(prev_index == 0xFE) {
@@ -271,7 +271,7 @@ static int fat32_inode_fetch_data(struct inode *n) {
     if(n->state & INODE_TYPE_DIR) {
         // Load directory
         if(fat32_inode_read_directory(n)) {
-            print("Failed to load FAT32 directory entry.\r\n");
+            print("Failed to load FAT32 directory entry.\n");
             return 1;
         }
         n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_VALID;
@@ -287,7 +287,7 @@ static int fat32_inode_fetch_data(struct inode *n) {
         if(bytes_loaded < n->data_size) {
             // We did not load the expected number of bytes.
             if(bytes_loaded != 0) {
-                print("Unexpected number of bytes in file.   {u} != {u}\r\n", bytes_loaded, n->data_size);
+                print("Unexpected number of bytes in file.   {u} != {u}\n", bytes_loaded, n->data_size);
             }
             free(n->data);
             n->data = 0;
@@ -298,24 +298,24 @@ static int fat32_inode_fetch_data(struct inode *n) {
         n->state = (n->state & ~INODE_STATE_MASK) | INODE_STATE_VALID;
         return 0;
     } else {
-        print("Unknown inode type.\r\n");
+        print("Unknown inode type.\n");
         return 1;
     }
 }
 
 
 void print_bpb(struct bios_parameter_block *bpb) {
-    print("BIOS Parameter Block\r\n");
+    print("BIOS Parameter Block\n");
 
-    print("  Bytes per Sector:      {i}\r\n", (int)bpb->bytes_per_sector);
-    print("  Sectors per Cluster:   {i}\r\n", (int)bpb->sectors_per_cluster);
-    print("  Reserved Sectors:      {i}\r\n", (int)bpb->nr_reserved_sectors);
-    print("  Number of FATs:        {i}\r\n", (int)bpb->nr_file_allocation_tables);
-    print("  Nr. Root Dir Entrys:   {i}\r\n", (int)bpb->nr_root_dir_entry);
-    print("  Sectors per FAT:       {i}\r\n", (int)bpb->sectors_per_fat);
-    print("  Number of Sectors:     {u}\r\n", bpb->nr_sectors);
-    print("  Root Cluster:          {u}\r\n", bpb->root_cluster);
-    print("  Volume Label:          {s}\r\n", bpb->volume_label);
+    print("  Bytes per Sector:      {i}\n", (int)bpb->bytes_per_sector);
+    print("  Sectors per Cluster:   {i}\n", (int)bpb->sectors_per_cluster);
+    print("  Reserved Sectors:      {i}\n", (int)bpb->nr_reserved_sectors);
+    print("  Number of FATs:        {i}\n", (int)bpb->nr_file_allocation_tables);
+    print("  Nr. Root Dir Entrys:   {i}\n", (int)bpb->nr_root_dir_entry);
+    print("  Sectors per FAT:       {i}\n", (int)bpb->sectors_per_fat);
+    print("  Number of Sectors:     {u}\n", bpb->nr_sectors);
+    print("  Root Cluster:          {u}\n", bpb->root_cluster);
+    print("  Volume Label:          {s}\n", bpb->volume_label);
 }
 
 
@@ -329,7 +329,7 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     struct fat32_disk *partition = kmalloc(sizeof(struct fat32_disk), ALLOC_ZERO_INIT);
     partition->bpb = kmalloc(sizeof(struct bios_parameter_block), ALLOC_ZERO_INIT);
     partition->dev = dev;
-    print("Loading FAT32 BIOS Parameter Block...\r\n");
+    print("Loading FAT32 BIOS Parameter Block...\n");
     if(read_fat32_bpb(partition->bpb, dev)) {
         goto init_failure;
     }
@@ -340,7 +340,7 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     if(fat32_check_valid(partition->bpb)) {
         goto init_failure;
     }
-    print("Loading FAT32 FAT table...\r\n");
+    print("Loading FAT32 FAT table...\n");
     if(fat32_load_fat(partition)) {
         goto init_failure;
     }
@@ -348,7 +348,7 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     // Create root inode
     partition->root_node = alloc_inode();
     if(!partition->root_node) {
-        print("Failed to allocated root node.\r\n");
+        print("Failed to allocated root node.\n");
         goto init_failure;
     }
     partition->root_node->state |= INODE_TYPE_DIR;

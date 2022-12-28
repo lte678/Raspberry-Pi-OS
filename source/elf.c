@@ -51,11 +51,11 @@ int load_elf_header(struct elf_data *elf) {
     header->abi         = unpack_from(data, uint8_t, 0x07);
     header->abi_version = unpack_from(data, uint8_t, 0x08);
     if(header->endianness != ELF_LITTLE_ENDIAN) {
-        print("ELF endianness is invalid.\r\n");
+        print("ELF endianness is invalid.\n");
         return 1;
     }
     if(header->elf_class != ELF_CLASS_64BIT) {
-        print("ELF is not 64-bit.\r\n");
+        print("ELF is not 64-bit.\n");
         return 1;
     }
 
@@ -121,23 +121,23 @@ int load_elf_program_header(struct elf_data *elf) {
  */
 int load_elf(struct inode* elf_file, struct elf_data *elf) {
     if(elf_file->state & INODE_TYPE_DIR) {
-        print("Target is a directory.\r\n");
+        print("Target is a directory.\n");
         return 1;
     }
     inode_fetch_data(elf_file);
 
     if(!(elf_file->state & INODE_STATE_VALID)) {
-        print("Failed to read file.\r\n");
+        print("Failed to read file.\n");
         return 1;
     }
 
     if(elf_file->data_size < 0x40) {
-        print("File must be 64 bytes or larger to contain an ELF header.\r\n");
+        print("File must be 64 bytes or larger to contain an ELF header.\n");
         return 1;
     }
 
     if(!is_elf(elf_file->data)) {
-        print("File does not contain an ELF header!\r\n");
+        print("File does not contain an ELF header!\n");
         return 1;
     }
 
@@ -146,11 +146,11 @@ int load_elf(struct inode* elf_file, struct elf_data *elf) {
     }
     elf->node = elf_file;
     if(load_elf_header(elf)) {
-        print("Failed to fully parse ELF header\r\n");
+        print("Failed to fully parse ELF header\n");
         return 1;
     }
     if(load_elf_program_header(elf)) {
-        print("Failed to load ELF program header\r\n");
+        print("Failed to load ELF program header\n");
         return 1;
     }
     return 0;
@@ -204,7 +204,7 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
     // Allocate memory. This returns a kernel virtual address.
     void* stack_memory = new_process_memory_region(p, p->user_thread->stack_size);
     if(!stack_memory) {
-        print("Failed to allocate process user stack!\r\n");
+        print("Failed to allocate process user stack!\n");
         return 1;
     }
     uint64_t stack_begin = (uint64_t)p->user_thread->sp - p->user_thread->stack_size;
@@ -214,7 +214,7 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
     // Create the necessary kernel context
     void* kernel_stack = new_process_memory_region(p, p->kern_thread->stack_size);
     if(!kernel_stack) {
-        print("Failed to allocate process kernel stack!\r\n");
+        print("Failed to allocate process kernel stack!\n");
         return 1;
     }
     p->kern_thread->sp = (uint64_t)kernel_stack + p->kern_thread->stack_size;

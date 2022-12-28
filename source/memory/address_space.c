@@ -57,7 +57,7 @@ int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t pad
     // Check for overlaps
     for(struct address_mapping *other = aspace->mappings; other; other = other->next) {
         if(memory_region_overlaps(new_map, other)) {
-            print("Attempted to map overlapping memory region!\r\n");
+            print("Attempted to map overlapping memory region!\n");
             free(new_map);
             return 1;
         }
@@ -219,7 +219,7 @@ struct address_space* init_kernel_address_space_struct(struct address_mapping **
 void print_address_space(struct address_space* s) {
     struct address_mapping *i = s->mappings;
     while(i) {
-        print("{xl} - {xl}   maps to   {xl} - {xl}\r\n",
+        print("{xl} - {xl}   maps to   {xl} - {xl}\n",
             i->vaddress,
             i->vaddress + i->size,
             i->paddress,

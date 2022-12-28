@@ -33,7 +33,7 @@ int inode_read(struct inode *node, void* dest, uint32_t n) {
 
 int inode_fetch_data(struct inode *n) {
     if(!n->ops.fetch_data) {
-        print("Error: ops.read_data not defined\r\n");
+        print("Error: ops.read_data not defined\n");
         return -1;
     }
     return n->ops.fetch_data(n);
@@ -41,7 +41,7 @@ int inode_fetch_data(struct inode *n) {
 
 int inode_push_data(struct inode *n) {
     if(!n->ops.push_data) {
-        print("Error: ops.write_data not defined\r\n");
+        print("Error: ops.write_data not defined\n");
         return -1;
     }
     return n->ops.push_data(n);
@@ -132,17 +132,17 @@ struct inode *inode_from_path(struct inode *root, char *path) {
         path_index = next_slash + 1;
     }
     // Search failed after 255 levels.
-    print("Exceeded maximum inode depth!\r\n");
+    print("Exceeded maximum inode depth!\n");
     return 0;
 }
 
 void inode_print(struct inode *n) {
     if(!n) {
-        print("Inode pointer invalid\r\n");
+        print("Inode pointer invalid\n");
         return;
     }
 
-    print("Inode\r\n");
+    print("Inode\n");
     print("  State:    ");
     if((n->state & INODE_STATE_MASK) == INODE_STATE_NEW) {
         print("new ");
@@ -156,8 +156,8 @@ void inode_print(struct inode *n) {
     if((n->state & INODE_TYPE_MASK) == INODE_TYPE_FILE) {
         print("file ");
     }
-    print("\r\n");
+    print("\n");
 
-    print("  Filename: {s}\r\n", n->filename);
-    print("  Size:     {u}\r\n", n->data_size);
+    print("  Filename: {s}\n", n->filename);
+    print("  Size:     {u}\n", n->data_size);
 }

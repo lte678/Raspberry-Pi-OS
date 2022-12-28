@@ -1,6 +1,7 @@
 #include <kernel/mmap.h>
 #include <kernel/print.h>
-
+#include <kernel/chardev.h>
+#include <kernel/register.h>
 #include <kernel/pagetable.h>
 
 #include "uart.h"
@@ -41,12 +42,7 @@ static uint64_t uart_baseaddr = UART_PHYSICAL_ADDR;
 //GPIO14  TXD0 and TXD1
 //GPIO15  RXD0 and RXD1
 
-unsigned int uart_lcr ( void )
-{
-    return(get32(AUX_MU_LSR_REG));
-}
-
-unsigned char uart_recv ( void )
+static unsigned char uart_recv ( void )
 {
     while(1)
     {
@@ -55,13 +51,8 @@ unsigned char uart_recv ( void )
     return get32(AUX_MU_IO_REG) & 0xFF;
 }
 
-unsigned int uart_check ( void )
-{
-    if(get32(AUX_MU_LSR_REG)&0x01) return(1);
-    return(0);
-}
 
-void uart_send (unsigned char c)
+static void uart_send (unsigned char c)
 {
     while(1)
     {
@@ -69,6 +60,46 @@ void uart_send (unsigned char c)
     }
     put32(AUX_MU_IO_REG, (unsigned int)c);
 }
+
+
+static int64_t uart_chardev_write(struct char_dev *dev, char *buf, int64_t count) {
+    for(int64_t i = 0; i < count; i++) {
+        if(buf[i] == '\n') {
+            uart_send('\r');
+            uart_send('\n');
+        } else {
+            uart_send(buf[i]);
+        }
+        
+    }
+    return count;
+}
+
+static int64_t uart_chardev_read(struct char_dev *dev, char *buf, int64_t count) {
+    for(int64_t i = 0; i < count; i++) {
+        buf[i] = uart_recv();
+    }
+    return count;
+}
+
+struct char_dev global_uart = {
+    .read = uart_chardev_read,
+    .write = uart_chardev_write,
+    .driver_str = "BCM_UART"
+};
+
+unsigned int uart_lcr ( void )
+{
+    return(get32(AUX_MU_LSR_REG));
+}
+
+
+unsigned int uart_check ( void )
+{
+    if(get32(AUX_MU_LSR_REG)&0x01) return(1);
+    return(0);
+}
+
 
 void uart_flush ( void )
 {
@@ -78,30 +109,6 @@ void uart_flush ( void )
     }
 }
 
-void hexstrings ( unsigned int d )
-{
-    //unsigned int ra;
-    unsigned int rb;
-    unsigned int rc;
-
-    rb=32;
-    while(1)
-    {
-        rb-=4;
-        rc=(d>>rb)&0xF;
-        if(rc>9) rc+=0x37; else rc+=0x30;
-        uart_send(rc);
-        if(rb==0) break;
-    }
-    uart_send(0x20);
-}
-
-void hexstring ( unsigned int d )
-{
-    hexstrings(d);
-    uart_send(0x0D);
-    uart_send(0x0A);
-}
 
 /**
  * @brief Initialized the hardware and uses a pre-mem identity memory mapping.
@@ -132,7 +139,7 @@ void uart_pre_init ( void )
     put32(GPPUDCLK0,0);
     put32(AUX_MU_CNTL_REG,3);
 
-    print("UART peripheral initialized @ 0x{xl}\r\n", uart_baseaddr);
+    print("UART peripheral initialized @ 0x{xl}\n", uart_baseaddr);
 }
 
 /**
@@ -143,27 +150,10 @@ int uart_init() {
     // No error checking!
     uint64_t new_uart_baseaddr = (uint64_t)mmap(UART_PHYSICAL_ADDR, UART_MAPPING_SIZE);
     if(!new_uart_baseaddr) {
-        print("uart: error: failed to remap IO region\r\n");
+        print("uart: error: failed to remap IO region\n");
         return -1;
     }
     uart_baseaddr = new_uart_baseaddr;
-    print("UART peripheral remapped @ 0x{xl}\r\n", uart_baseaddr);
+    print("UART peripheral remapped @ 0x{xl}\n", uart_baseaddr);
     return 0;
 }
-
-void uart_print(char *string) {
-    while(*string) {
-        uart_send(*string);
-        string++;
-    }
-}
-
-//
-// Copyright (c) 2012 David Welch dwelch@dwelch.com
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//

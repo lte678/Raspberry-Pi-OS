@@ -126,7 +126,7 @@ uint64_t page_table_virtual_to_physical(uint64_t* table, uint64_t a) {
  */
 int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint64_t size) {
     if((pa & (PAGE_SIZE - 1)) || (va & (PAGE_SIZE - 1)) || (size & (PAGE_SIZE - 1))) {
-        print("Failed to map page table address, invalid page alignment!\r\n");
+        print("Failed to map page table address, invalid page alignment!\n");
         return -1;
     }
 
@@ -148,7 +148,7 @@ int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint6
             uint16_t table_index = address_index(current_address, i);
             if(is_leaf_entry(current_table[table_index], i)) {
                 // Page table leaf node
-                print("Conflicting entry already present in page table! (address: %p)\r\n", current_address);
+                print("Conflicting entry already present in page table! (address: %p)\n", current_address);
                 return -1;
             } else if(is_table_entry(current_table[table_index], i)) {
                 // Page table index to next table -> follow
@@ -186,7 +186,7 @@ static void prune_if_empty(uint64_t* parent, uint64_t* child) {
     // No entry is present -> prune
     for(int i = 0; i < PAGE_TABLE_ENTRIES; i++) {
         uint64_t* table = PT_ADDRESS_TO_KERN((uint64_t*)(parent[i] & ~0b11));
-        // print("{xl} != {xl}\r\n", (uint64_t)table, (uint64_t)child);
+        // print("{xl} != {xl}\n", (uint64_t)table, (uint64_t)child);
         if((uint64_t)table == (uint64_t)child) {
             // We have found the parent entry for the empty child
             // TODO: Make all page tables dynamically allocated, so that all pages are managed by the allocator.
@@ -195,7 +195,7 @@ static void prune_if_empty(uint64_t* parent, uint64_t* child) {
             return;
         }
     }
-    print("Corrupted page table in prune_if_empty()\r\n");
+    print("Corrupted page table in prune_if_empty()\n");
     panic();
     return;
 }
@@ -209,7 +209,7 @@ static void prune_if_empty(uint64_t* parent, uint64_t* child) {
  */
 int page_table_unmap_address(uint64_t* root_table, uint64_t va, uint64_t size) {
     if((va & (PAGE_SIZE - 1)) || (size & (PAGE_SIZE - 1))) {
-        print("Failed to unmap page table address, invalid page alignment!\r\n");
+        print("Failed to unmap page table address, invalid page alignment!\n");
         return -1;
     }
 
@@ -235,7 +235,7 @@ int page_table_unmap_address(uint64_t* root_table, uint64_t va, uint64_t size) {
                 // Page table index to next table -> follow
                 tables[i+1] = PT_ADDRESS_TO_KERN((uint64_t*)(current_table[table_index] & ~0b11));
             } else {
-                print("page_table_unmap_address: warning: attempting to unmap non-mapped regions.\r\n");
+                print("page_table_unmap_address: warning: attempting to unmap non-mapped regions.\n");
                 current_address += page_table_block_size(i);
                 break;
             }
@@ -283,7 +283,7 @@ static void page_table_print_section(uint64_t* table, int depth) {
             // The entry is present
             for(int d = 0; d < depth; d++) print("  ");
             if(continuous >= 3) {
-                print("...\r\n");
+                print("...\n");
                 i = 511;
                 for(int d = 0; d < depth; d++) print("  ");
             }
@@ -294,7 +294,7 @@ static void page_table_print_section(uint64_t* table, int depth) {
             } else if(i < 100) {
                 print(" ");
             }
-            print(": {xl}\r\n",table[i]);
+            print(": {xl}\n",table[i]);
 
             // Current page table level == depth - 1
             if(is_table_entry(table[i], depth - 1)) {
@@ -320,6 +320,6 @@ static void page_table_print_section(uint64_t* table, int depth) {
  * @param table Kernel address of table
  */
 void page_table_print(uint64_t* table) {
-    print("Page table @ {p}\r\n", table);
+    print("Page table @ {p}\n", table);
     page_table_print_section(table, 1);
 }

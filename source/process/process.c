@@ -6,6 +6,8 @@
 #include <kernel/register.h>
 #include <kernel/print.h>
 #include <kernel/panic.h>
+#include <kernel/chardev.h>
+#include <kernel/device_types.h>
 #include <init_sysregs.h>
 
 
@@ -49,8 +51,33 @@ struct process* allocate_process() {
     p->pid = global_pid_counter;
     global_pid_counter++;
 
+    // Open the default file descriptors
+    // TODO: Check for errors
+    process_new_stream_descriptor(p, &global_uart, DEVICE_TYPE_CHAR);
+    process_new_stream_descriptor(p, &global_uart, DEVICE_TYPE_CHAR);
+    process_new_stream_descriptor(p, &global_uart, DEVICE_TYPE_CHAR);
+
     return p;
 }
+
+
+int32_t process_new_stream_descriptor(struct process* p, void* dev, uint8_t dev_type) {
+    struct stream_descriptor *new_stream = (struct stream_descriptor*)kmalloc(sizeof(struct stream_descriptor), 0);
+    if(!new_stream) {
+        return 1;
+    }
+    new_stream->dev = dev;
+    new_stream->dev_type = dev_type;
+    new_stream->id = p->stream_count;
+    p->stream_count++;
+    
+    // Insert into linked list
+    new_stream->next = p->streams;
+    p->streams = new_stream;
+
+    return 0;
+}
+
 
 
 /**
@@ -74,7 +101,7 @@ void remove_process_mappings(struct process *p) {
     struct address_mapping *i = p->addr_space->mappings;
     while(i) {
         if(unmap_memory_region(p->addr_space, i)) {
-            print("Unable to unmap memory region, kernel address space has been corrupted!\r\n");
+            print("Unable to unmap memory region, kernel address space has been corrupted!\n");
             panic();
             return;
         }
@@ -82,6 +109,16 @@ void remove_process_mappings(struct process *p) {
     }
 }
 
+
+void free_process_streams(struct process *p) {
+    struct stream_descriptor *i = p->streams;
+    while(i) {
+        struct stream_descriptor *next_i = i->next;
+        free(i);
+        p->stream_count--;
+        i = next_i;
+    }
+}
 
 /**
  * @brief Call on terminated processes. Removes all allocations, mappings and frees structs.
@@ -91,6 +128,7 @@ void remove_process_mappings(struct process *p) {
 void destroy_process(struct process *p) {
     free_process_memory(p);
     remove_process_mappings(p);
+    free_process_streams(p);
     free(p->kern_thread);
     free(p->user_thread);
     struct address_mapping *i = p->addr_space->mappings;
@@ -105,7 +143,7 @@ void destroy_process(struct process *p) {
 
 void switch_to_user_thread() {
     #ifdef DEBUG_THREADING
-    print("Switching to user thread\r\n");
+    print("Switching to user thread\n");
     #endif
     // Set the ERET jump address to the start of the application
     write_system_reg(ELR_EL1, (uint64_t)(kernel_curr_process->user_thread->link_reg));
@@ -131,7 +169,7 @@ void switch_to_user_thread() {
  */
 void switch_to_process(struct process *p, bool_t terminating) {
     #ifdef DEBUG_THREADING
-    print("Switching to process with PID {d}\r\n", p->pid);
+    print("Switching to process with PID {d}\n", p->pid);
     #endif
 
      // Maintain changes in process structs
@@ -154,7 +192,7 @@ void *new_process_memory_region(struct process *p, uint64_t size) {
     // Allocate memory. This returns a kernel virtual address.
     void* header_memory = kmalloc(size, ALLOC_ZERO_INIT | ALLOC_PAGE_ALIGN);
     if(!header_memory) {
-        print("Failed to allocate process memory!\r\n");
+        print("Failed to allocate process memory!\n");
         return 0;
     }
 
@@ -192,7 +230,7 @@ void *new_mapped_process_memory(struct process *p, uint64_t target_addr, uint64_
  * @param p the process
  */
 void print_process(struct process *p) {
-    print("--- Process with PID {d} ---\r\n", p->pid);
+    print("--- Process with PID {d} ---\n", p->pid);
     const char* state = "unknown";
     switch(p->state) {
     case PROCESS_STATE_NEW:
@@ -208,26 +246,26 @@ void print_process(struct process *p) {
         state = "waiting";
         break;
     }
-    print("State      :{s}\r\n", state);
+    print("State      :{s}\n", state);
 
-    print("User Thread\r\n");
-    print("  PC       :0x{xl}\r\n", p->user_thread->link_reg);
-    print("  Stack    :0x{xl}\r\n", p->user_thread->sp);
-    print("  Stk Size :0x{xl}\r\n", p->user_thread->stack_size);
+    print("User Thread\n");
+    print("  PC       :0x{xl}\n", p->user_thread->link_reg);
+    print("  Stack    :0x{xl}\n", p->user_thread->sp);
+    print("  Stk Size :0x{xl}\n", p->user_thread->stack_size);
 
-    print("Kernel Thread\r\n");
-    print("  PC       :0x{xl}\r\n", p->kern_thread->link_reg);
-    print("  Stack    :0x{xl}\r\n", p->kern_thread->sp);
-    print("  Stk Size :0x{xl}\r\n", p->kern_thread->stack_size);
+    print("Kernel Thread\n");
+    print("  PC       :0x{xl}\n", p->kern_thread->link_reg);
+    print("  Stack    :0x{xl}\n", p->kern_thread->sp);
+    print("  Stk Size :0x{xl}\n", p->kern_thread->stack_size);
 
     uint32_t nr_of_allocations = 0;
     for(struct process_memory_handle *m = p->allocated_list; m; m=m->next) {
         nr_of_allocations++;
     }
-    print("Allocations:{d}\r\n", nr_of_allocations);
+    print("Allocations:{d}\n", nr_of_allocations);
 
-    print("Mappings\r\n");
+    print("Mappings\n");
     for(struct address_mapping *m = p->addr_space->mappings; m; m=m->next) {
-        print("  0x{xl} to 0x{xl}\r\n", m->vaddress, m->paddress);
+        print("  0x{xl} to 0x{xl}\n", m->vaddress, m->paddress);
     }
 }

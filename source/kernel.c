@@ -10,6 +10,7 @@
 #include <kernel/address_space.h>
 #include <kernel/mmap.h>
 #include <kernel/process.h>
+#include <kernel/register.h>
 
 
 #include "alloc/buddy.h"
@@ -21,7 +22,7 @@
 
 void print_execution_level() {
     uint32_t execution_level = read_system_reg(CurrentEL) >> 2;
-    print("Executing in EL{u}\r\n", execution_level);
+    print("Executing in EL{u}\n", execution_level);
 }
 
 
@@ -43,13 +44,13 @@ void kernel_entry_point(void) {
 
     // Uart
     uart_pre_init();
-    print("Stack address: {xl}\r\n", read_stack_pointer());
-    print("Booting LXE...\r\n");
-    print("Developed by Leon Teichroeb :)\r\n");
+    print("Stack address: {xl}\n", read_stack_pointer());
+    print("Booting LXE...\n");
+    print("Developed by Leon Teichroeb :)\n");
 
     // Print version
     if(version_str(ver_str, sizeof(ver_str)) == 0) {
-        print("Version: v{s}\r\n", ver_str);
+        print("Version: v{s}\n", ver_str);
     }
     print_execution_level();
 
@@ -59,7 +60,7 @@ void kernel_entry_point(void) {
     //   bpb.bytes_per_sector = 512;
     //   print_bpb(&bpb);
     //
-    //    print("FAT32 read BPB failed!\r\n");
+    //    print("FAT32 read BPB failed!\n");
     //}
 
     if(init_buddy_allocator()) {
@@ -77,19 +78,19 @@ void kernel_entry_point(void) {
     }
     // After this point, physical addresses no longer work!
     if(unmap_and_remove_memory_region(kernel_address_space, id_mapping)) {
-        print("Failed to unmap identity mapping!\r\n");
+        print("Failed to unmap identity mapping!\n");
         panic();
     }
-    print("Unmapped identity mapping.\r\n");
+    print("Unmapped identity mapping.\n");
     
     struct block_dev *primary_sd = alloc_block_dev();
     if(sd_initialize(primary_sd)) {
-        print("SD device is required to mount root directory!\r\n");
+        print("SD device is required to mount root directory!\n");
         panic();
     }
     struct fat32_disk *root_part = init_fat32_disk(primary_sd);
     if(!root_part) {
-        print("Failed to load root partition!\r\n");
+        print("Failed to load root partition!\n");
         panic();
     }
     g_root_inode = root_part->root_node;
@@ -98,7 +99,7 @@ void kernel_entry_point(void) {
     kernel_curr_process = allocate_process();
     process_list_head = kernel_curr_process;
     if(!kernel_curr_process) {
-        print("Failed to allocate main kernel process1\r\n");
+        print("Failed to allocate main kernel process1\n");
         panic();
     }
     kernel_curr_process->state = PROCESS_STATE_RUNNING;

@@ -26,31 +26,31 @@ static uint64_t mmap_get_free_vaddr() {
             return MMAP_BASE_ADDR + (MMAP_MAX_MAPPING_SIZE * (uint64_t)i);
         }
     }
-    print("mmap: error: out of virtual addresses!\r\n");
+    print("mmap: error: out of virtual addresses!\n");
     return 0;
 }
 
 void* mmap(uint64_t pa, uint64_t size) {
     // Preform checks
     if((pa & (PAGE_SIZE - 1)) || (size & (PAGE_SIZE - 1))) {
-        print("mmap: error: Invalid page alignment!\r\n");
+        print("mmap: error: Invalid page alignment!\n");
         return 0;
     }
 
     if(size > MMAP_MAX_MAPPING_SIZE) {
-        print("mmap: error: max mapping size exceeded!\r\n");
+        print("mmap: error: max mapping size exceeded!\n");
         return 0;
     }
     // Reserve new virtual address region
     uint64_t vaddr = mmap_get_free_vaddr();
     if(!vaddr) {
-        print("mmap: error: failed to obtain free virtual address\r\n");
+        print("mmap: error: failed to obtain free virtual address\n");
         return 0;
     }
 
     // Preform mapping
     if(map_memory_region(kernel_address_space, vaddr, pa, size)) {
-        print("mmap: error: failed to map {x} bytes from 0x{xl} -> 0x{xl}\r\n", size, pa, vaddr);
+        print("mmap: error: failed to map {x} bytes from 0x{xl} -> 0x{xl}\n", size, pa, vaddr);
         // TODO: free mapping
         return 0;
     }
