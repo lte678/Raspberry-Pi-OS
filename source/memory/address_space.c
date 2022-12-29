@@ -36,38 +36,57 @@ static int memory_region_overlaps(struct address_mapping *map1, struct address_m
 
 
 /**
- * @brief Maps address to physical address in the specified virtual address space. Adds to linked list.
+ * @brief Maps an unmapped address_mapping into the page table. The mapping may not already be active.
  * 
  * @param aspace Address space containing the page tables to be modified.
+ * @param map    The mapping to be readded.
+ * @return int 
+ */
+int map_memory_region(struct address_space *aspace, struct address_mapping *map) {
+    if(map->active) {
+        print("Attempted to map already active memory region\n");
+        return 1;
+    }
+    // Check for overlaps
+    for(struct address_mapping *other = aspace->mappings; other; other = other->next) {
+        if(memory_region_overlaps(map, other)) {
+            print("Attempted to map overlapping memory region!\n");
+            free(map);
+            return 1;
+        }
+    }
+    // No overlaps, add region to page table
+    if(page_table_map_address(aspace->page_table, map->paddress, map->vaddress, map->size)) {
+        free(map);
+        return 1;
+    }
+    map->active = true;
+    return 0;
+}
+
+
+/**
+ * @brief Maps address to physical address in the specified virtual address space. Adds to linked list.
+ * 
+ * @param aspace Address space to add the mapping to
  * @param vaddr The start of the virtual address block
  * @param paddr The start of the physical address block
  * @param size Size of the memory region to map
  * @return 0 for success
  */
-int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t paddr, uint64_t size) {
+struct address_mapping* create_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t paddr, uint64_t size) {
     // Allocate new mapping
     struct address_mapping *new_map = kmalloc(sizeof(struct address_mapping), 0);
+    if(!new_map) {
+        return 0;
+    }
+
     new_map->next = 0;
     new_map->prev = 0;
     new_map->vaddress = vaddr;
     new_map->paddress = paddr;
     new_map->size = size;
-    new_map->active = true;
-
-    // Check for overlaps
-    for(struct address_mapping *other = aspace->mappings; other; other = other->next) {
-        if(memory_region_overlaps(new_map, other)) {
-            print("Attempted to map overlapping memory region!\n");
-            free(new_map);
-            return 1;
-        }
-    }
-
-    // No overlaps, add region to page table
-    if(page_table_map_address(aspace->page_table, new_map->paddress, new_map->vaddress, new_map->size)) {
-        free(new_map);
-        return 1;
-    }
+    new_map->active = false; // Otherwise it will not be mapped by map_existing
 
     // Insert memory region into linked list
     if(aspace->mappings) {
@@ -76,31 +95,27 @@ int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t pad
     new_map->next = aspace->mappings;
     aspace->mappings = new_map;
 
-    return 0;
+    return new_map;
 }
 
 
 /**
- * @brief Maps address to kernel address in the specified virtual address space. Adds to linked list.
+ * @brief Creates a mapping for the kernel address in the specified virtual address space. Adds to linked list.
  * 
- * @param aspace Address space containing the page tables to be modified.
+ * @param aspace Address space to add the mapping to
  * @param vaddr The start of the virtual address block
  * @param paddr The start of the physical address block
  * @param size Size of the memory region to map
- * @return 0 for success
+ * @return Pointer to the new mapping
  */
-int map_memory_region_virt(struct address_space *aspace, uint64_t vaddr, uint64_t kaddr, uint64_t size) {
+struct address_mapping* create_memory_region_virt(struct address_space *aspace, uint64_t vaddr, uint64_t kaddr, uint64_t size) {
     // Translate kernel address to physical address for page table entry
     uint64_t map_to = page_table_virtual_to_physical(kernel_page_table, (uint64_t)kaddr);
     if(!map_to) {
-        return 1;
+        return 0;
     }
 
-    if(map_memory_region(aspace, vaddr, map_to, size)) {
-        return 1;
-    }
-
-    return 0;
+    return create_memory_region(aspace, vaddr, map_to, size);
 }
 
 
@@ -112,7 +127,11 @@ int map_memory_region_virt(struct address_space *aspace, uint64_t vaddr, uint64_
  * @return 0 for success
  */
 int unmap_memory_region(struct address_space *aspace, struct address_mapping *mapping) {
-    // No overlaps, add region to page table
+    // This is fine. It is already unmapped.
+    if(!mapping->active) {
+        return 0;
+    }
+
     if(page_table_unmap_address(aspace->page_table, mapping->vaddress, mapping->size)) {
         return 1;
     }
@@ -219,11 +238,16 @@ struct address_space* init_kernel_address_space_struct(struct address_mapping **
 void print_address_space(struct address_space* s) {
     struct address_mapping *i = s->mappings;
     while(i) {
-        print("{xl} - {xl}   maps to   {xl} - {xl}\n",
+        char* active = "[inactive]";
+        if(i->active) {
+            active = "[active]";
+        }
+        print("{xl} - {xl} maps to {xl} - {xl}  {s}\n",
             i->vaddress,
             i->vaddress + i->size,
             i->paddress,
-            i->paddress + i->size);
+            i->paddress + i->size,
+            active);
         i = i->next;
     }
 }

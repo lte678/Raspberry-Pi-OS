@@ -12,9 +12,14 @@ uint64_t syscall_sbrk(int incr) {
     if(required_space > 0) {
         // print("sbrk requires {l} more bytes.\n", required_space);
         required_space = round_up_to_page(required_space);
-        void* new_mem = new_mapped_process_memory(p, user_addr, required_space);
+        struct address_mapping *new_mem = new_mapped_process_memory(p, user_addr, required_space);
         if(!new_mem) {
             print("Failed to allocate new process memory.\n");
+            // TODO: Just cause a fault
+            panic();
+        }
+        if(map_memory_region(p->addr_space, new_mem)) {
+            print("Failed to map new process memory.\n");
             // TODO: Just cause a fault
             panic();
         }

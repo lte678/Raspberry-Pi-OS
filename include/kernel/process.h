@@ -61,8 +61,9 @@ extern uint64_t global_pid_counter;
 extern struct process *process_list_head;
 
 void print_process(struct process *p);
+void print_process_brief(struct process *p);
 void *new_process_memory_region(struct process *p, uint64_t size);
-void *new_mapped_process_memory(struct process *p, uint64_t target_addr, uint64_t size);
+struct address_mapping* new_mapped_process_memory(struct process *p, uint64_t target_addr, uint64_t size);
 struct process* allocate_process();
 int32_t process_new_stream_descriptor(struct process* p, void* dev, uint8_t dev_type);
 void switch_to_user_thread();

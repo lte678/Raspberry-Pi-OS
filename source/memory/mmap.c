@@ -48,10 +48,19 @@ void* mmap(uint64_t pa, uint64_t size) {
         return 0;
     }
 
-    // Preform mapping
-    if(map_memory_region(kernel_address_space, vaddr, pa, size)) {
-        print("mmap: error: failed to map {x} bytes from 0x{xl} -> 0x{xl}\n", size, pa, vaddr);
-        // TODO: free mapping
+    // Create mapping
+    struct address_mapping* new_mapping = create_memory_region(kernel_address_space, vaddr, pa, size);
+    if(!new_mapping) {
+        print("mmap: error: failed to create map for {x} bytes from 0x{xl} -> 0x{xl}\n", size, pa, vaddr);
+        return 0;
+    }
+
+    // Activate mapping
+    if(map_memory_region(kernel_address_space, new_mapping)) {
+        print("mmap: error: failed to create map for {x} bytes from 0x{xl} -> 0x{xl}\n", size, pa, vaddr);
+        // This tolerates the mapping not being mapped. It will remove it from the linked list.
+        unmap_and_remove_memory_region(kernel_address_space, new_mapping);
+        free(new_mapping);
         return 0;
     }
 

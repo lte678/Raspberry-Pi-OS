@@ -16,17 +16,19 @@ _Hello recruiters ^^_
 - SD card driver
 - Slab allocator
 - Buddy block allocator
+- Virtual memory
+- ELF execution
+- Process management (WIP)
 - Virtual file system (WIP)
 - Interrupt handling (WIP)
 - Platform timer (WIP)
-- Virtual memory (WIP)
 - `printf`
 - Lots, and lots, and lots of bugs
 
 ## Todo
 
-- Processes
 - FAT32 writing
+- Rust toolchain for userspace applications
 
 ## Screenshot!
 ![image](https://user-images.githubusercontent.com/13468015/190192540-663a7a40-f077-4d54-9980-a806416f8d43.png)

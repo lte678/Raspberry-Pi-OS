@@ -7,6 +7,7 @@
 #include <kernel/print.h>
 #include <kernel/panic.h>
 #include <kernel/chardev.h>
+#include <kernel/pagetable.h>
 #include <kernel/device_types.h>
 #include <init_sysregs.h>
 
@@ -87,20 +88,30 @@ int32_t process_new_stream_descriptor(struct process* p, void* dev, uint8_t dev_
  * @param p Process
  */
 void free_process_memory(struct process *p) {
-    struct process_memory_handle *i = p->allocated_list;
-    while(i) {
-        free(i->memory);
-        struct process_memory_handle *next_i = i->next;
-        free(i);
-        i = next_i;
+    while(p->allocated_list) {
+        free(p->allocated_list->memory);
+        struct process_memory_handle *next = p->allocated_list->next;
+        free(p->allocated_list);
+        p->allocated_list = next;
     }
 }
 
 
 void remove_process_mappings(struct process *p) {
+    while(p->addr_space->mappings) {
+        if(unmap_and_remove_memory_region(p->addr_space, p->addr_space->mappings)) {
+            print("Unable to unmap memory region, kernel address space has been corrupted!\n");
+            panic();
+            return;
+        }
+    }
+}
+
+
+void restore_process_mappings(struct process *p) {
     struct address_mapping *i = p->addr_space->mappings;
     while(i) {
-        if(unmap_memory_region(p->addr_space, i)) {
+        if(map_memory_region(p->addr_space, i)) {
             print("Unable to unmap memory region, kernel address space has been corrupted!\n");
             panic();
             return;
@@ -120,6 +131,7 @@ void free_process_streams(struct process *p) {
     }
 }
 
+
 /**
  * @brief Call on terminated processes. Removes all allocations, mappings and frees structs.
  * 
@@ -131,13 +143,26 @@ void destroy_process(struct process *p) {
     free_process_streams(p);
     free(p->kern_thread);
     free(p->user_thread);
-    struct address_mapping *i = p->addr_space->mappings;
-    while(i) {
-        struct address_mapping *next_i = i->next;
-        free(i);
-        i = next_i;
-    }
     free(p->addr_space);
+
+    // Remove process from linked list
+    struct process *i_prev = 0;
+    struct process *i = process_list_head;
+    while(i) {
+        if(i == p) {
+            // Found the process
+            if(i_prev) {
+                i_prev->next = i->next;
+            } else {
+                process_list_head = i->next;
+            }
+            free(i);
+            return;
+        }
+        i_prev = i;
+        i = i->next;
+    }
+    print("destroy_process: warning: process not found in process list.\n");
 }
 
 
@@ -168,6 +193,13 @@ void switch_to_user_thread() {
  * @param terminating True if the current process should be terminated.
  */
 void switch_to_process(struct process *p, bool_t terminating) {
+    // Unmap user mappings. This is equivalent to all process specific mappings.
+    // This call only sets the adress_mapping to unused and removes it from the global page table.
+    remove_process_mappings(kernel_curr_process);
+
+    // Add new user mappings to page table
+    restore_process_mappings(p);
+
     #ifdef DEBUG_THREADING
     print("Switching to process with PID {d}\n", p->pid);
     #endif
@@ -210,27 +242,17 @@ void *new_process_memory_region(struct process *p, uint64_t size) {
 }
 
 
-void *new_mapped_process_memory(struct process *p, uint64_t target_addr, uint64_t size) {
+struct address_mapping* new_mapped_process_memory(struct process *p, uint64_t target_addr, uint64_t size) {
     // Append memory region to the processes allocation lists
     void* new_mem = new_process_memory_region(p, size);
     if(!new_mem) {
         return 0;
     }
-
-    if(map_memory_region_virt(p->addr_space, target_addr, (uint64_t)new_mem, size)) {
-        return 0;
-    }
-    return new_mem;
+    return create_memory_region_virt(p->addr_space, target_addr, (uint64_t)new_mem, size);
 }
 
 
-/**
- * @brief Prints all process information
- * 
- * @param p the process
- */
-void print_process(struct process *p) {
-    print("--- Process with PID {d} ---\n", p->pid);
+static const char* process_state_string(struct process *p) {
     const char* state = "unknown";
     switch(p->state) {
     case PROCESS_STATE_NEW:
@@ -246,7 +268,19 @@ void print_process(struct process *p) {
         state = "waiting";
         break;
     }
-    print("State      :{s}\n", state);
+    return state;
+}
+
+
+/**
+ * @brief Prints all process information
+ * 
+ * @param p the process
+ */
+void print_process(struct process *p) {
+    print("--- Process with PID {d} ---\n", p->pid);
+
+    print("State      :{s}\n", process_state_string(p));
 
     print("User Thread\n");
     print("  PC       :0x{xl}\n", p->user_thread->link_reg);
@@ -268,4 +302,14 @@ void print_process(struct process *p) {
     for(struct address_mapping *m = p->addr_space->mappings; m; m=m->next) {
         print("  0x{xl} to 0x{xl}\n", m->vaddress, m->paddress);
     }
+}
+
+
+/**
+ * @brief Prints brief process information
+ * 
+ * @param p the process
+ */
+void print_process_brief(struct process *p) {
+    print("Process with PID {d}, state [{s}]\n", p->pid, process_state_string(p));
 }

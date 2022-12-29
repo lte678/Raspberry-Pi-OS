@@ -128,9 +128,5 @@ int monoterm_run(int argc, char *argv[]) {
 
     switch_to_process(p, false);
 
-    // TODO: Do this in a scheduler garbage collection method
-    destroy_process(p);
-
-
     return 0;
 }

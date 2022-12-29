@@ -10,7 +10,8 @@ void switch_to_next_process(bool_t terminating) {
             // Execute this process
             switch_to_process(p, terminating);
         } else if(p->state == PROCESS_STATE_TERMINATED) {
-            print("Process with PID {d} should be deallocated.\n", p->pid);
+            // Garbage collection is performed as we encounter terminated processes.
+            destroy_process(p);
         }
     }
     print("Scheduler: No runnable process found!\n");

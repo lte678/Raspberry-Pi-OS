@@ -21,8 +21,9 @@ struct address_space {
 extern struct address_space* kernel_address_space;
 
 
-int map_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t paddr, uint64_t size);
-int map_memory_region_virt(struct address_space *aspace, uint64_t vaddr, uint64_t kaddr, uint64_t size);
+int map_memory_region(struct address_space *aspace, struct address_mapping *map);
+struct address_mapping* create_memory_region(struct address_space *aspace, uint64_t vaddr, uint64_t paddr, uint64_t size);
+struct address_mapping* create_memory_region_virt(struct address_space *aspace, uint64_t vaddr, uint64_t kaddr, uint64_t size);
 int unmap_memory_region(struct address_space *aspace, struct address_mapping *mapping);
 int unmap_and_remove_memory_region(struct address_space *aspace, struct address_mapping *mapping);
 struct address_space* allocate_address_space();

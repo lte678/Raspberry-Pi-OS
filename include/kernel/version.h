@@ -10,7 +10,7 @@
  */
 
 #define MAJOR_VERSION 0
-#define MINOR_VERSION 4
+#define MINOR_VERSION 5
 
 int version_str(char *buf, unsigned int n) {
     int written;

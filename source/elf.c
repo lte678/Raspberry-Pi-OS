@@ -194,7 +194,11 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
             return 1;
         }
 
-        reterr(map_memory_region_virt(p->addr_space, map_from, (uint64_t)header_memory, round_up_to_page(hdr->proc_size)));
+        struct address_mapping* m = create_memory_region_virt(p->addr_space, map_from, (uint64_t)header_memory, round_up_to_page(hdr->proc_size));
+        if(!m) {
+            // Cleanup is handled by the 'header_memory' memory region already being in the linked list.
+            return 1;
+        }
 
         // Copy data
         memcpy((char*)header_memory + file_page_offset, elf->node->data + hdr->file_address, hdr->file_size);
@@ -208,8 +212,11 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
         return 1;
     }
     uint64_t stack_begin = (uint64_t)p->user_thread->sp - p->user_thread->stack_size;
-    reterr(map_memory_region_virt(p->addr_space, stack_begin, (uint64_t)stack_memory, p->user_thread->stack_size));
-
+    struct address_mapping* m = create_memory_region_virt(p->addr_space, stack_begin, (uint64_t)stack_memory, p->user_thread->stack_size);
+    if(!m) {
+        // Cleanup is handled by the 'stack_memory' memory region already being in the linked list.
+        return 1;
+    }
 
     // Create the necessary kernel context
     void* kernel_stack = new_process_memory_region(p, p->kern_thread->stack_size);
