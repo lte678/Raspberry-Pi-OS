@@ -156,7 +156,7 @@ int page_table_map_address(uint64_t* root_table, uint64_t pa, uint64_t va, uint6
             } else {
                 // No entry present. Create a new table and point to it
                 uint64_t *new_table = kmalloc(PAGE_SIZE, ALLOC_ZERO_INIT);
-                page_table_insert_table_descriptor(current_table, KERN_TO_PHYS(new_table), current_address, i);
+                page_table_insert_table_descriptor(current_table, PT_KERN_TO_PHYS(new_table), current_address, i);
                 current_table = new_table;
             }
         }

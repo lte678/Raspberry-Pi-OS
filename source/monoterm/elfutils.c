@@ -79,8 +79,8 @@ int monoterm_elfdump(int argc, char *argv[]) {
 
 
 int monoterm_run(int argc, char *argv[]) {
-    if(argc != 2) {
-        print("Invalid number of arguments.\nUsage: elfrun [ELF file]\n");
+    if(argc < 2) {
+        print("Invalid number of arguments.\nUsage: run [ELF] [program args]\n");
         return 1;
     }
 
@@ -110,21 +110,17 @@ int monoterm_run(int argc, char *argv[]) {
 
     if(elf_create_process(elf, p)) {
         free(elf);
-        free(p);
+        destroy_process(p);
         print("Failed to create process!\n");
         return 1;
     }
 
-    // print_process(p);
-
-    // Put process into linked list
-    p->next = process_list_head;
-    process_list_head->prev = p;
-    process_list_head = p;
-
-    // print("Created process. Running...\n");
-    // print("Entry point @ {p}\n", p->process_entry_point);
-    // print("First command: {x}\n", *(uint32_t*)p->process_entry_point);
+    // Put argc and argv into the context and onto the stack to call main
+    if(process_entry_point_args(p, argc - 1, &argv[1])) {
+        free(elf);
+        destroy_process(p);
+        return 1;
+    }
 
     switch_to_process(p, false);
 

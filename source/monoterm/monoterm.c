@@ -8,48 +8,46 @@
 #include "uart.h"
 #include "monoterm.h"
 
-#define MAX_INPUT_LENGTH 256
+#define MAX_INPUT_LENGTH 4096
+#define MAX_TOKENS       64
+
+
+uint64_t get_token_length(char *s, char delimiter) {
+    uint64_t len = 0;
+    while(s[len] != delimiter && s[len] != '\0') {
+        len++;
+    }
+    return len;
+}
 
 
 int process_input(char *s) {
-    // Up to 8 arguments with a length of 32 characters each
-    char raw_args[8*32];
-    char *args[8];
-    for(int i = 0; i < 8; i++) {
-        args[i] = &raw_args[32*i];
-    }
+    // Up to MAX_TOKENS arguments
+    char *args[MAX_TOKENS];
 
     // Tokenize input
-    // TODO: Make sure we are not exceeding array bounds
-    int arg_i = 0;
-    int str_i = 0;
+    uint64_t token_idx = 0;
     while(*s) {
-        args[arg_i][str_i] = *s;
-        str_i++;
-        s++;
-        if(*s == ' ') {
-            // Finish string
-            args[arg_i][str_i] = '\0';
-            while(*s == ' ') {
-                s++;
-            }
-            if(*s) {
-                // Dont add argument for trailing whitespace
-                arg_i++;
-                str_i = 0;
-            }
+        int64_t token_len = get_token_length(s, ' ');
+        if(token_len > 0) {
+            args[token_idx] = kmalloc(token_len + 1, 0);
+            memcpy(args[token_idx], s, token_len);
+            args[token_idx][token_len] = '\0';
+            s += token_len;
+            token_idx++;
+        } else {
+            // We are pointing at whitespace, continue to the next character
+            s++;
         }
     }
-    // Finish string
-    args[arg_i][str_i] = '\0';
-
+    
     // Find and execute command
     struct monoterm_cmd *cmd = monoterm_cmds;
     // Loop until we reach the final pseudo-token
     while(strcmp(cmd->cmd, "\0")) {
         if(!strcmp(cmd->cmd, args[0])) {
             // Returns the result/return value of the command
-            return (cmd->cmd_func)(arg_i + 1, args);
+            return (cmd->cmd_func)(token_idx, args);
         }
         cmd++;
     }
@@ -65,7 +63,8 @@ static void print_prompt() {
 }
 
 void monoterm_start() {
-    char input[MAX_INPUT_LENGTH];
+    // Non-zeroed memory
+    char *input = kmalloc(MAX_INPUT_LENGTH, 0);
 
     print_prompt();
     int input_i = 0;
@@ -91,10 +90,12 @@ void monoterm_start() {
                 input_i--;
             }
         } else {
-            input[input_i] = c;
-            // Echo user input
-            write_char(&global_uart, &c, 1);
-            input_i++;
+            if(input_i < MAX_INPUT_LENGTH) {
+                input[input_i] = c;
+                // Echo user input
+                write_char(&global_uart, &c, 1);
+                input_i++;
+            }
         }
         prev = c;
     }

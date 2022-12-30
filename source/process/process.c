@@ -8,6 +8,7 @@
 #include <kernel/panic.h>
 #include <kernel/chardev.h>
 #include <kernel/pagetable.h>
+#include <kernel/mem.h>
 #include <kernel/device_types.h>
 #include <init_sysregs.h>
 
@@ -58,6 +59,10 @@ struct process* allocate_process() {
     process_new_stream_descriptor(p, &global_uart, DEVICE_TYPE_CHAR);
     process_new_stream_descriptor(p, &global_uart, DEVICE_TYPE_CHAR);
 
+    // Put into global process list
+    p->next = process_list_head;
+    process_list_head = p;
+
     return p;
 }
 
@@ -79,6 +84,44 @@ int32_t process_new_stream_descriptor(struct process* p, void* dev, uint8_t dev_
     return 0;
 }
 
+
+int32_t process_entry_point_args(struct process* p, int32_t argc, char** argv) {
+    if(p->state != PROCESS_STATE_NEW) {
+        print("process_entry_point_args: process {d} must be in state 'new'\n", p->pid);
+        return 1;
+    }
+
+    // The array of pointers, and the strings are pushed onto the stack
+    // Bottom of stack -> char pointers -> char strings
+    uint32_t argv_len = argc * 8;
+    for(int i = 0; i < argc; i++) {
+        argv_len += strlen(argv[i]) + 1; // 1 byte for 0 terminator
+    }
+    // 16 byte alignment
+    argv_len = stack_aligned(argv_len);
+    // Put argv and strings onto the stack
+    p->user_thread->sp -= argv_len;
+    // Address of stack in kernel space. It is not currently mapped
+    void *stack_address = PHYS_TO_KERN(address_space_virtual_to_physical(p->addr_space, (void*)p->user_thread->sp));
+
+    // Copy the strings and addresses to the stack
+    uint64_t current_str_offset = 0;
+    for(int i = 0; i < argc; i++) {
+        // sp + argc*8 is the beginning of the strings section
+        // Put address on stack
+        ((uint64_t*)stack_address)[i] = (uint64_t)((char*)(p->user_thread->sp) + argc * 8 + current_str_offset);
+        // Put string on stack
+        uint64_t str_len = strlen(argv[i]) + 1;
+        memcpy((char*)stack_address + argc*8 + current_str_offset, argv[i], str_len);
+        current_str_offset += str_len;
+    }
+
+    // Insert into user context
+    memcpy((char*)&p->user_thread->registers[0], (char*)&argc, 4);
+    // argv pointed to the parameters in kernel space. The user stack pointer now points to it in user space.
+    p->user_thread->registers[1] = p->user_thread->sp;
+    return 0;
+}
 
 
 /**
@@ -174,16 +217,9 @@ void switch_to_user_thread() {
     write_system_reg(ELR_EL1, (uint64_t)(kernel_curr_process->user_thread->link_reg));
     // Configure user space processor state
     write_system_reg(SP_EL0, (uint64_t)(kernel_curr_process->user_thread->sp));
-    
-    // This does not work, since we are not using a split address space!
-    // Userspace inherits TTBR0_EL1
 
-    // Setup page table address
-    //write_system_reg(TTBR0_EL0, (uint64_t)p->addr_space->page_table);
-    // System control register is always inherited from SCTLR_EL1
-    // Page translation control register is always inherited from TCR_EL1
-
-    asm volatile("eret");
+    // Load the userspace thread state
+    load_user_context(kernel_curr_process->user_thread);
 }
 
 /**

@@ -3,7 +3,7 @@ ARMGNU ?= ../../toolchain/build/bin/aarch64-elf-lxe
 OPTIONS = -g
 CFLAGS = -Wall -Wl,-z,max-page-size=4096 $(OPTIONS)
 
-TARGET = demo
+TARGET = echo
 BUILD = build/
 OBJS = main.o
 HEADERS = 

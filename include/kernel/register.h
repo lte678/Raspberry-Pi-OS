@@ -10,3 +10,5 @@
 
 void put32(uint64_t addr, uint32_t data);
 uint32_t get32(uint64_t addr);
+
+#define stack_aligned(address) ((address + 15) & ~0b1111)

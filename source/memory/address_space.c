@@ -234,6 +234,27 @@ struct address_space* init_kernel_address_space_struct(struct address_mapping **
     return kaddrspace;
 }
 
+/**
+ * @brief Translates the virtual address to a physical address using the given address space. Unlike 
+ * page_table_virtual_to_physical(), this function allows translation of addresses which are not
+ * currently mapped. Because of this, it must also translate using address_mappings that are marked not active,
+ * making ignoring mappings impossible.
+ * 
+ * @param s The address space to translate with
+ * @param address Input address
+ * @return Output address
+ */
+void* address_space_virtual_to_physical(struct address_space *s, void* address) {
+    struct address_mapping *i = s->mappings;
+    while(i) {
+        if((uint64_t)address > i->vaddress && (uint64_t)address < i->vaddress + i->size) {
+            return (void*)(i->paddress + ((uint64_t)address - i->vaddress));
+        }
+        i = i->next;
+    }
+    return 0;
+} 
+
 
 void print_address_space(struct address_space* s) {
     struct address_mapping *i = s->mappings;
