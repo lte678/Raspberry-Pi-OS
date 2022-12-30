@@ -88,12 +88,12 @@ void kernel_entry_point(void) {
         print("SD device is required to mount root directory!\n");
         panic();
     }
-    struct fat32_disk *root_part = init_fat32_disk(primary_sd);
-    if(!root_part) {
+    g_root_fs = init_fat32_disk(primary_sd);
+    if(!g_root_fs) {
         print("Failed to load root partition!\n");
         panic();
     }
-    g_root_inode = root_part->root_node;
+    g_root_inode = g_root_fs->root_node;
 
     // Create main kernel thread
     kernel_curr_process = allocate_process();

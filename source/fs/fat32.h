@@ -19,6 +19,8 @@
 #define BPB_OFF_RESERVED_SECTORS        (BPB_GLOBAL_OFF + 0x03)
 #define BPB_OFF_NR_FILE_ALLOC_TABLES    (BPB_GLOBAL_OFF + 0x05)
 #define BPB_OFF_NR_ROOT_DIR_ENTRIES     (BPB_GLOBAL_OFF + 0x06)
+#define BPB_OFF_FAT16_TOTAL_SECTORS     (BPB_GLOBAL_OFF + 0x08)
+#define BPB_OFF_FAT16_SECTORS_PER_FAT   (BPB_GLOBAL_OFF + 0x0B)
 // Extended fat32 specific data
 #define BPB_OFF_TOTAL_SECTORS           (BPB_GLOBAL_OFF + 0x15)
 #define BPB_OFF_SECTORS_PER_FAT         (BPB_GLOBAL_OFF + 0x19)
@@ -26,13 +28,19 @@
 #define BPB_OFF_VOLUME_LABEL            (BPB_GLOBAL_OFF + 0x47)
 
 
+// This is temporary. We want to keep track of multiple file systems of different types eventually
+extern struct fat32_disk *g_root_fs;
+
 struct bios_parameter_block {
     uint16_t bytes_per_sector;
     uint8_t sectors_per_cluster;
     uint16_t nr_reserved_sectors;
     uint8_t nr_file_allocation_tables;
     uint16_t nr_root_dir_entry;
+    // Is zero for fat32 disks. Used for identification
+    uint16_t fat16_sectors_per_fat;
     uint16_t sectors_per_fat;
+    uint16_t nr_fat16_sectors;
     uint32_t nr_sectors;
     uint32_t root_cluster;
     char volume_label[11];
@@ -46,6 +54,7 @@ struct fat32_disk {
     unsigned int fat_entries;
     unsigned int data_sector;
     unsigned int bytes_per_cluster;
+    unsigned int sectors;
     uint32_t *fat;
 };
 

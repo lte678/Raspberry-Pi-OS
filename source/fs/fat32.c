@@ -5,8 +5,9 @@
 #include "fat32.h"
 
 
-static struct inode_ops fat32_inode_ops;
+struct fat32_disk *g_root_fs = 0;
 
+static struct inode_ops fat32_inode_ops;
 
 static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *dev) {
     unsigned char *blk_buff = kmalloc(dev->block_size, 0);
@@ -25,8 +26,10 @@ static int read_fat32_bpb(struct bios_parameter_block *bpb, struct block_dev *de
     bpb->nr_reserved_sectors = *((uint16_t*)(blk_buff + BPB_OFF_RESERVED_SECTORS));
     bpb->nr_file_allocation_tables = *((uint8_t*)(blk_buff + BPB_OFF_NR_FILE_ALLOC_TABLES));
     bpb->nr_root_dir_entry = *((uint16_t*)(blk_buff + BPB_OFF_NR_ROOT_DIR_ENTRIES));
+    bpb->fat16_sectors_per_fat = *((uint16_t*)(blk_buff + BPB_OFF_FAT16_SECTORS_PER_FAT));
     bpb->sectors_per_fat = *((uint16_t*)(blk_buff + BPB_OFF_SECTORS_PER_FAT));
     bpb->nr_sectors = *((uint32_t*)(blk_buff + BPB_OFF_TOTAL_SECTORS));
+    bpb->nr_fat16_sectors = *((uint16_t*)(blk_buff + BPB_OFF_FAT16_TOTAL_SECTORS));
     bpb->root_cluster = *((uint32_t*)(blk_buff + BPB_OFF_ROOT_DIR_CLUSTER));
     strncpy(bpb->volume_label, (char*)(blk_buff + BPB_OFF_VOLUME_LABEL), 11);
     bpb->volume_label[10] = 0;
@@ -40,6 +43,16 @@ static int fat32_check_valid(struct bios_parameter_block *bpb) {
         return -1;
     }
 
+    if(bpb->nr_fat16_sectors == 0 && bpb->nr_sectors == 0) {
+        print("Partitions number sectors == 0\n");
+        print_bpb(bpb);
+        return -1;
+    }
+
+    if(bpb->fat16_sectors_per_fat != 0) {
+        print("FAT16 filesystems are not supported.\n");
+        return -1;
+    }
     return 0;
 }
 
@@ -282,6 +295,10 @@ static int fat32_inode_fetch_data(struct inode *n) {
             // Data size is populated in new FAT32 inodes, so we may use it here.
             // Don't zero the memory.
             n->data = kmalloc(n->data_size, 0);
+            if(!n->data) {
+                print("fat32_inode_fetch_data: Failed to allocate space for inode\n");
+                return 1;
+            }
         }
         unsigned int bytes_loaded = fat32_load_cluster_chain(partition, n->data, n->data_size, n_cluster);
         if(bytes_loaded < n->data_size) {
@@ -314,6 +331,7 @@ void print_bpb(struct bios_parameter_block *bpb) {
     print("  Nr. Root Dir Entrys:   {i}\n", (int)bpb->nr_root_dir_entry);
     print("  Sectors per FAT:       {i}\n", (int)bpb->sectors_per_fat);
     print("  Number of Sectors:     {u}\n", bpb->nr_sectors);
+    print("  Nr of Sectors (FAT16): {i}\n", (int)bpb->nr_fat16_sectors);
     print("  Root Cluster:          {u}\n", bpb->root_cluster);
     print("  Volume Label:          {s}\n", bpb->volume_label);
 }
@@ -340,6 +358,12 @@ struct fat32_disk* init_fat32_disk(struct block_dev *dev) {
     if(fat32_check_valid(partition->bpb)) {
         goto init_failure;
     }
+    if(partition->bpb->nr_sectors) {
+        partition->sectors = partition->bpb->nr_sectors;
+    } else {
+        partition->sectors = partition->bpb->nr_fat16_sectors;
+    }
+
     print("Loading FAT32 FAT table...\n");
     if(fat32_load_fat(partition)) {
         goto init_failure;
