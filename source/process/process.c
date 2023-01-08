@@ -92,8 +92,9 @@ int32_t process_entry_point_args(struct process* p, int32_t argc, char** argv) {
     }
 
     // The array of pointers, and the strings are pushed onto the stack
-    // Bottom of stack -> char pointers -> char strings
-    uint32_t argv_len = argc * 8;
+    // Bottom of stack -> argc -> char pointers -> char strings
+    uint32_t string_section_start = argc * 8 + 8;
+    uint32_t argv_len = string_section_start;
     for(int i = 0; i < argc; i++) {
         argv_len += strlen(argv[i]) + 1; // 1 byte for 0 terminator
     }
@@ -104,15 +105,18 @@ int32_t process_entry_point_args(struct process* p, int32_t argc, char** argv) {
     // Address of stack in kernel space. It is not currently mapped
     void *stack_address = PHYS_TO_KERN(address_space_virtual_to_physical(p->addr_space, (void*)p->user_thread->sp));
 
+    // Put argc on the stack 
+    ((uint64_t*)stack_address)[0] = argc;
+
     // Copy the strings and addresses to the stack
     uint64_t current_str_offset = 0;
     for(int i = 0; i < argc; i++) {
-        // sp + argc*8 is the beginning of the strings section
+        // sp + argc*8 + 8 is the beginning of the strings section
         // Put address on stack
-        ((uint64_t*)stack_address)[i] = (uint64_t)((char*)(p->user_thread->sp) + argc * 8 + current_str_offset);
+        ((uint64_t*)stack_address)[i+1] = (uint64_t)((char*)(p->user_thread->sp) + string_section_start + current_str_offset);
         // Put string on stack
         uint64_t str_len = strlen(argv[i]) + 1;
-        memcpy((char*)stack_address + argc*8 + current_str_offset, argv[i], str_len);
+        memcpy((char*)stack_address + string_section_start + current_str_offset, argv[i], str_len);
         current_str_offset += str_len;
     }
 
@@ -141,12 +145,14 @@ void free_process_memory(struct process *p) {
 
 
 void remove_process_mappings(struct process *p) {
-    while(p->addr_space->mappings) {
-        if(unmap_and_remove_memory_region(p->addr_space, p->addr_space->mappings)) {
+    struct address_mapping *i = p->addr_space->mappings;
+    while(i) {
+        if(unmap_memory_region(p->addr_space, i)) {
             print("Unable to unmap memory region, kernel address space has been corrupted!\n");
             panic();
             return;
         }
+        i = i->next;
     }
 }
 
@@ -182,7 +188,7 @@ void free_process_streams(struct process *p) {
  */
 void destroy_process(struct process *p) {
     free_process_memory(p);
-    remove_process_mappings(p);
+    remove_process_mappings(p); // TODO, this does not remove them from the list
     free_process_streams(p);
     free(p->kern_thread);
     free(p->user_thread);
@@ -226,9 +232,9 @@ void switch_to_user_thread() {
  * @brief Stores the current process context, and resumes the supplied process.
  * 
  * @param p The process to switch to.
- * @param terminating True if the current process should be terminated.
+ * @param new_state The state of this process after yielding.
  */
-void switch_to_process(struct process *p, bool_t terminating) {
+void switch_to_process(struct process *p, uint8_t new_state) {
     // Unmap user mappings. This is equivalent to all process specific mappings.
     // This call only sets the adress_mapping to unused and removes it from the global page table.
     remove_process_mappings(kernel_curr_process);
@@ -240,13 +246,8 @@ void switch_to_process(struct process *p, bool_t terminating) {
     print("Switching to process with PID {d}\n", p->pid);
     #endif
 
-     // Maintain changes in process structs
-    //print_thread_context(kernel_curr_process->kern_thread);
-    if(terminating) {
-        kernel_curr_process->state = PROCESS_STATE_TERMINATED;
-    } else {
-        kernel_curr_process->state = PROCESS_STATE_WAITING;
-    }
+    // Maintain changes in process structs
+    kernel_curr_process->state = new_state;
 
     struct process *prev_proc = kernel_curr_process;
     kernel_curr_process = p;
@@ -303,6 +304,9 @@ static const char* process_state_string(struct process *p) {
     case PROCESS_STATE_WAITING:
         state = "waiting";
         break;
+    case PROCESS_STATE_FAULTED:
+        state = "faulted";
+        break;
     }
     return state;
 }
@@ -335,9 +339,16 @@ void print_process(struct process *p) {
     print("Allocations:{d}\n", nr_of_allocations);
 
     print("Mappings\n");
-    for(struct address_mapping *m = p->addr_space->mappings; m; m=m->next) {
-        print("  0x{xl} to 0x{xl}\n", m->vaddress, m->paddress);
+    //for(struct address_mapping *m = p->addr_space->mappings; m; m=m->next) {
+    //    print("  0x{xl} to 0x{xl}\n", m->vaddress, m->paddress);
+    //}
+    print_address_space(p->addr_space);
+    if(!p->addr_space->mappings) {
+        print("  None\n");
     }
+
+    print("User interupt stack:\n");
+    print("  0x{xl}\n", p->exception_stack_pointer);
 }
 
 

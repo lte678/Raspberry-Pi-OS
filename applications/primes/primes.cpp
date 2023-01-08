@@ -5,6 +5,10 @@
 
 void generate_primes(long limit) {
     long number_of_primes = 0;
+    // Edge case
+    if(limit >= 2) {
+        number_of_primes++;
+    }
     for(long n = 3; n <= limit; n += 2) {
         number_of_primes++;
         // Try numbers from 2 to sqrt(n) as factors
@@ -17,7 +21,8 @@ void generate_primes(long limit) {
         }
         // If we exit without breaking, number_of_primes remains incremented
 
-        if(n % 10000 == 0) {
+        // The number is always odd, this is a little hacky :D
+        if(n % 25000 == 1) {
             std::cout << n << " numbers searched..." << std::endl;
         }
     }

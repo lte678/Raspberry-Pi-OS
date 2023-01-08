@@ -16,9 +16,17 @@
 #define PROCESS_STATE_RUNNING    1
 #define PROCESS_STATE_WAITING    2
 #define PROCESS_STATE_TERMINATED 3
+#define PROCESS_STATE_FAULTED    4 // Do not clean up right away, so we can dump data from the struct
+
+// TOOD: Hmmm, I don't think that user threads actually need to save their registers in this way.
+// The only way that user space context switches is via exception into kernel space, where we store the registers on the stack anyway.
 
 
 struct process {
+    // Start of assembly accessed variables
+    uint64_t *exception_stack_pointer;
+    // End of assembly accessed variables
+
     struct process *next;
 
     struct address_space *addr_space;
@@ -67,8 +75,9 @@ struct process* allocate_process();
 int32_t process_new_stream_descriptor(struct process* p, void* dev, uint8_t dev_type);
 int32_t process_entry_point_args(struct process* p, int32_t argc, char** argv);
 void switch_to_user_thread();
-void switch_to_process(struct process *p, bool_t terminating);
+void switch_to_process(struct process *p, uint8_t new_state);
 void free_process_memory(struct process *p);
+void restore_process_mappings(struct process *p);
 void remove_process_mappings(struct process *p);
 void free_process_streams(struct process *p);
 void destroy_process(struct process *p);

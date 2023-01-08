@@ -45,6 +45,10 @@ int process_input(char *s) {
     struct monoterm_cmd *cmd = monoterm_cmds;
     // Loop until we reach the final pseudo-token
     while(strcmp(cmd->cmd, "\0")) {
+        if(token_idx == 0) {
+            // Just do nothing a start a new line.
+            return 0;
+        }
         if(!strcmp(cmd->cmd, args[0])) {
             // Returns the result/return value of the command
             return (cmd->cmd_func)(token_idx, args);

@@ -19,7 +19,7 @@ uint64_t handle_syscall(uint64_t syscall, uint64_t a1, uint64_t a2, uint64_t a3,
         print("exit({d})\n", (int)a1);
         #endif
         // The true flag indicates that we are terminating the process
-        switch_to_next_process(true);
+        switch_to_next_process(PROCESS_STATE_TERMINATED);
         print("ERROR: Resumed exited thread!\n");
         panic();
         //return syscall_exit((int)a1);

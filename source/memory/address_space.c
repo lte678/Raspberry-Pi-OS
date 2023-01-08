@@ -258,12 +258,16 @@ void* address_space_virtual_to_physical(struct address_space *s, void* address) 
 
 void print_address_space(struct address_space* s) {
     struct address_mapping *i = s->mappings;
+    if(!i) {
+        print("No mappings\n");
+        return;
+    }
     while(i) {
         char* active = "[inactive]";
         if(i->active) {
             active = "[active]";
         }
-        print("{xl} - {xl} maps to {xl} - {xl}  {s}\n",
+        print("  {xl} - {xl} maps to {xl} - {xl}  {s}\n",
             i->vaddress,
             i->vaddress + i->size,
             i->paddress,

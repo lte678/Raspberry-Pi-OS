@@ -37,9 +37,26 @@
 	stp	x26, x27, [sp, #16 * 13]
 	stp	x28, x29, [sp, #16 * 14]
 	str	x30, [sp, #16 * 15]
+
+	# Point to our stack in the process struct
+	ldr x9, =kernel_curr_process
+	# x9 is a pointer to our pointer
+	ldr x9, [x9]
+	# x9 now contains our pointer
+	mov x10, sp
+	str x10, [x9]
+
 	.endm
 
 .macro	kernel_exit
+	# Point to our stack in the process struct
+	ldr x9, =kernel_curr_process
+	# x9 is a pointer to our pointer
+	ldr x9, [x9]
+	# x9 now contains our pointer
+	mov x10, #0
+	str x10, [x9]
+
 	ldp	x0, x1, [sp, #16 * 0]
 	ldp	x2, x3, [sp, #16 * 1]
 	ldp	x4, x5, [sp, #16 * 2]
@@ -61,6 +78,14 @@
 	.endm
 
 .macro	syscall_exit
+	# Point to our stack in the process struct
+	ldr x9, =kernel_curr_process
+	# x9 is a pointer to our pointer
+	ldr x9, [x9]
+	# x9 now contains our pointer
+	mov x10, #0
+	str x10, [x9]
+
 	# Preserve return parameters
 	# ldp	x0, x1, [sp, #16 * 0]
 	# ldp	x2, x3, [sp, #16 * 1]

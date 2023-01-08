@@ -189,12 +189,13 @@ int elf_create_process(struct elf_data *elf, struct process *p) {
         }
 
         // Append memory region to the processes allocation lists
-        void* header_memory = new_process_memory_region(p, hdr->proc_size);
+        void* header_memory = new_process_memory_region(p, hdr->proc_size + file_page_offset);
         if(!header_memory) {
+            print("Failed to allocate memory for user memory\n");
             return 1;
         }
 
-        struct address_mapping* m = create_memory_region_virt(p->addr_space, map_from, (uint64_t)header_memory, round_up_to_page(hdr->proc_size));
+        struct address_mapping* m = create_memory_region_virt(p->addr_space, map_from, (uint64_t)header_memory, round_up_to_page(hdr->proc_size + file_page_offset));
         if(!m) {
             // Cleanup is handled by the 'header_memory' memory region already being in the linked list.
             return 1;

@@ -3,6 +3,8 @@
 #include <kernel/timer.h>
 #include <kernel/panic.h>
 #include <kernel/term.h>
+#include <kernel/scheduler.h>
+#include <kernel/process.h>
 #include <kernel/syscall.h>
 
 #define INT_BASE 0x3F00B000
@@ -122,14 +124,12 @@ uint64_t handle_exception_sync_el0(uint64_t syscall, uint64_t a1, uint64_t a2, u
 		print("## EL0 SYNC EXCEPTION ##\n");
 		print("Invalid vector instruction.\n");
 		print_esr_and_far(esr, far, error_class);
-		panic();
 	case 36:
 		// 0b100101: Data Abort taken without change in exception level.
 		apply_exception_formatting();
 		print("## EL0 SYNC EXCEPTION ##\n");
 		print("Invalid memory access from userspace!\n");
 		print_esr_and_far(esr, far, error_class);
-		panic();
 		break;
 	case 21:
 		// Syscall
@@ -140,8 +140,10 @@ uint64_t handle_exception_sync_el0(uint64_t syscall, uint64_t a1, uint64_t a2, u
 		print("Unidentified exception in userspace.\n");
 		print("See D13-5347 in ARM Reference Manual\n");
 		print_esr_and_far(esr, far, error_class);
-		panic();
 	}
+	
+	switch_to_next_process(PROCESS_STATE_FAULTED);
+	panic();
 }
 
 void handle_exception_irq_el0() {

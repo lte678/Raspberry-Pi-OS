@@ -122,7 +122,7 @@ int monoterm_run(int argc, char *argv[]) {
         return 1;
     }
 
-    switch_to_process(p, false);
+    switch_to_process(p, PROCESS_STATE_WAITING);
 
     return 0;
 }

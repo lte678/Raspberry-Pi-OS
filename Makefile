@@ -31,12 +31,12 @@ MAP = kernel.map
 LINKER = kernel.ld
 
 # Dont use glib
-OPTIONS = -DTRACE_SYSCALLS # -DDEBUG_BUDDY -DDEBUG_SD 
+OPTIONS =  # -DTRACE_SYSCALLS -DDEBUG_BUDDY -DDEBUG_SD 
 CFLAGS = -mgeneral-regs-only -mcmodel=large\
 	-Wall -Og -g -nostdlib -nostartfiles -ffreestanding $(OPTIONS)
 
 # Subfolders containing source files
-FOLDERS := fs disk monoterm alloc memory dev string process syscalls
+FOLDERS := $(shell find source/* -type d -printf "%f\n")
 
 # The names of all object files that must be generated. Deduced from the 
 # assembly code files in source.
@@ -112,3 +112,24 @@ clean :
 	-rm -f $(TARGET)
 	-rm -f $(LIST)
 	-rm -f $(MAP)
+
+
+
+# --------------- DEMO APPLICATIONS --------------
+
+APPS := $(shell find applications/* -maxdepth 0 -type d -printf "%f\n")
+APP_FOLDERS := $(shell find applications/* -maxdepth 0 -type d)
+APP_BINARIES := $(patsubst %,applications/%/build/%,$(APPS))
+APP_COPY := $(patsubst %,/mnt/%,$(APPS))
+
+apps: $(APP_FOLDERS)
+
+$(APP_FOLDERS): .FORCE
+	make -C $@
+
+.FORCE:
+
+/mnt/%: applications/%/build/%
+	cp -f $< $@
+
+copyapps: $(APP_COPY)

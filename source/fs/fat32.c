@@ -294,7 +294,7 @@ static int fat32_inode_fetch_data(struct inode *n) {
         if(!n->data) {
             // Data size is populated in new FAT32 inodes, so we may use it here.
             // Don't zero the memory.
-            n->data = kmalloc(n->data_size, 0);
+            n->data = vmalloc(n->data_size, 0);
             if(!n->data) {
                 print("fat32_inode_fetch_data: Failed to allocate space for inode\n");
                 return 1;

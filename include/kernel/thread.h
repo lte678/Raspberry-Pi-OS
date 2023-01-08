@@ -25,4 +25,5 @@ struct kthread *allocate_kthread();
 void switch_context(struct kthread *from, struct kthread *to);
 void load_user_context(struct kthread *to);
 void print_thread_context(struct kthread *t);
+void print_register_block(uint64_t* registers);
 void switch_to_thread(struct kthread *t);

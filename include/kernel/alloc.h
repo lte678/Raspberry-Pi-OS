@@ -12,4 +12,6 @@ void* kmalloc_largest_available(uint64_t size, uint32_t flags, uint64_t *allocat
 void free(void* memory);
 int try_free(void* memory);
 
+void* vmalloc(unsigned long size, uint32_t flags);
+
 #endif
