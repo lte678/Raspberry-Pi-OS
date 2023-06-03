@@ -95,12 +95,14 @@ run:
 	qemu-system-aarch64 -M raspi3b \
 		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
 		-nographic\
+		-dtb "bcm2837-rpi-3-b-plus.dtb"\
 		-kernel kernel.img -drive file=test.img,if=sd,format=raw
 
 debug:
 	qemu-system-aarch64 -M raspi3b \
 		-serial null -serial chardev:ptydev -chardev pty,id=ptydev\
 		-S -gdb tcp::9000 \
+		-dtb "bcm2837-rpi-3-b-plus.dtb"\
 		-kernel kernel.img -drive file=test.img,if=sd,format=raw
 
 mount_loopfs:

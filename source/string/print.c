@@ -8,56 +8,6 @@
 #define get_byte(field, offset) (field & (0xfful << (offset * 8ul))) >> (offset * 8ul)
 
 
-static char hex_char_upper(unsigned char c) {
-    switch(c) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 8: 
-    case 9:
-        return '0' + c;
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
-    case 15:
-        return 'A' + (c - 10);
-    default:
-        return ' ';
-    }
-}
-
-/* static char hex_char_lower(unsigned char c) {
-    switch(c) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 8: 
-    case 9:
-        return '0' + c;
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
-    case 15:
-        return 'a' + (c - 10);
-    default:
-        return ' ';
-    }
-} */
-
 void print_int(int number) {
     // Theoretically, we should never surpass 12 characters (including null byte)
     char buff[12];
@@ -170,12 +120,18 @@ void _print(char *fstring, int numargs, ...) {
     // 1 : Start of format string
     // 
     int state = 0;
+    int escaped = 0;
     int args_printed = 0;
     //char *format_start = 0;
     char *format_end = 0;
 
     while(*fstring) {
-        if(state == 0) {
+        if(escaped) {
+            write_char(&global_uart, fstring, 1);
+            escaped = 0;
+        } else if(*fstring == '\\') {
+            escaped = 1;
+        } else if(state == 0) {
             // Outside format tag
             if(*fstring == '{') {
                 // Start formatting code

@@ -1,6 +1,8 @@
 #ifndef STRING_H
 #define STRING_H
 
+#include <kernel/types.h>
+
 #define KEYCODE_ESCAPE 27
 #define KEYCODE_CTRL_C  3
 
@@ -15,6 +17,8 @@ void strncpy(char *dest, char *src, unsigned int n);
 int atoi(const char* string, int* result);
 int is_character(char c);
 int is_alphanumeric(char c);
+char* escape_string(char* s, uint32_t len);
 int is_csi_sequence_terminator(char c);
+char hex_char_upper(unsigned char c);
 
 #endif // STRING_H

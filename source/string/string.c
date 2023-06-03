@@ -1,3 +1,8 @@
+#include <kernel/string.h>
+
+#include <kernel/alloc.h>
+
+
 int ltos(long num, char *buffer, unsigned int n) {
     int i;
     int j;
@@ -215,6 +220,40 @@ int is_alphanumeric(char c) {
 }
 
 
+char* escape_string(char* s, uint32_t len) {
+    // First pass to determine output buffer length
+    uint32_t buffer_len = 1;
+    for(uint32_t i = 0; i < len; i++) {
+        if(!is_character(s[i])) {
+            buffer_len += 4;
+        } else {
+            buffer_len += 1;
+        }
+    }
+    char* out = kmalloc(buffer_len, 0);
+    if(!out) {
+        return 0;
+    }
+
+    // Second pass to escape characters
+    char* j = out;
+    for(uint32_t i = 0; i < len; i++) {
+        if(!is_character(s[i])) {
+            j[0] = '\\';
+            j[1] = 'x';
+            j[2] = hex_char_upper((s[i] & 0xF0) >> 4);
+            j[3] = hex_char_upper(s[i] & 0x0F);
+            j += 4;
+        } else {
+            *j = s[i];
+            j += 1;
+        }
+    }
+    *j = 0;
+    return out;
+}
+
+
 /**
  * @brief Determines if the character terminates a
  * https://en.wikipedia.org/wiki/ANSI_escape_code#CSIsection
@@ -238,3 +277,53 @@ int is_csi_sequence_terminator(char c) {
     }
     return 0;
 }
+
+char hex_char_upper(unsigned char c) {
+    switch(c) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8: 
+    case 9:
+        return '0' + c;
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 14:
+    case 15:
+        return 'A' + (c - 10);
+    default:
+        return ' ';
+    }
+}
+
+/* static char hex_char_lower(unsigned char c) {
+    switch(c) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8: 
+    case 9:
+        return '0' + c;
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 14:
+    case 15:
+        return 'a' + (c - 10);
+    default:
+        return ' ';
+    }
+} */

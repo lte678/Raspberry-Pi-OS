@@ -11,7 +11,7 @@
 #include <kernel/mmap.h>
 #include <kernel/process.h>
 #include <kernel/register.h>
-
+#include <kernel/device_tree.h>
 
 #include "alloc/buddy.h"
 #include "uart.h"
@@ -26,10 +26,8 @@ void print_execution_level() {
 }
 
 
-void kernel_entry_point(void) {
-    //struct bios_parameter_block bpb;
+void kernel_entry_point(uint64_t device_tree_phys_address) {
     char ver_str[8];
-    //uint64_t time;
     
     wait_usec(3000000);
 
@@ -83,6 +81,12 @@ void kernel_entry_point(void) {
     }
     print("Unmapped identity mapping.\n");
     
+    kernel_dt = load_device_tree(PHYS_TO_KERN(device_tree_phys_address));
+    if(!kernel_dt) {
+        panic();
+    }
+    print("DTB loaded @ 0x{xl}(phys)\n", device_tree_phys_address);
+
     struct block_dev *primary_sd = alloc_block_dev();
     if(sd_initialize(primary_sd)) {
         print("SD device is required to mount root directory!\n");
